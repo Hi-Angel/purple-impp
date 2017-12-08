@@ -26,6 +26,7 @@ shared_library(
   dependencies: [PURPLE],
   install: true,
   install_dir: PURPLE.get_pkgconfig_variable('plugindir'),
+  cpp_args: ['-std=c++17']
 )
 
 executable(
@@ -33,6 +34,6 @@ executable(
   SOURCES + ['debug.cpp'],
   dependencies: [PURPLE],
   install: false,
-  cpp_args: ['-O0', '-g3', '-fsanitize=address'],
+  cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17'],
   link_args: ['-fsanitize=address']
 )

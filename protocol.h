@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <variant>
 
 //source: https://stackoverflow.com/a/4956493/2388257
 template <typename T>
@@ -25,6 +26,12 @@ struct big_endian {
 
     big_endian(const big_endian<T>& a) : val(a.val) {}
     T get() const { return swap_endian(val); }
+
+    // used by Cereal for (de)serialization
+    template<class Archive>
+    void serialize(Archive& archive) {
+        archive(val);
+    }
 private: // to not occasionally mess with endianess
     T val;
 };
@@ -58,24 +65,70 @@ enum TLV_VAL: uint16_t {
 };
 }
 
-#pragma pack(push, 1)
 struct tlv_unit {
     uint16bg_t type; // meaning of a type depends to their family
-    uint8_t tlv_unit16or32[];
-    // whether 32 or 16 determines most significant bit of the type. 1 ⇒ 32, 0 ⇒
-    // 16. Also, quoting docs "Because the most significant bit of a TLV type is
-    // reserved, the allowable range of values for TLV types is 0-32767". This means
-    // MSB is checked in big-endian.
-};
+    union {
+        // whether 32 or 16 determines most significant bit of the type. 1 ⇒ 32, 0 ⇒
+        // 16. Also, quoting docs "Because the most significant bit of a TLV type is
+        // reserved, the allowable range of values for TLV types is 0-32767". This
+        // means MSB is checked in big-endian.
+        uint16bg_t val_sz16;
+        uint32bg_t val_sz32;
+    };
+    std::vector<uint8_t>  val;
 
-struct tlv_unit16 {
-    uint16bg_t val_sz;
-    uint8_t  val[];
-};
+    // used by Cereal for (de)serialization
+    template<class Archive>
+    void save(Archive& archive) const {
+        archive(type);
+        if (is_val_sz32())
+            archive(val_sz32);
+        else
+            archive(val_sz16);
+        for(auto b : val)
+            archive(b);
+    }
+    template<class Archive>
+    void load(Archive& archive) {
+        archive(type);
+        if (is_val_sz32())
+            archive(val_sz32);
+        else
+            archive(val_sz16);
+        unsigned val_sz = (is_val_sz32())? val_sz32.get() : val_sz16.get();
+        //todo: https://github.com/USCiLab/cereal/issues/453#issuecomment-349207696
+        //for now let's stick to half-assed check.
+        static const unsigned _500MB = 1024 * 1024 * 500;
+        if (val_sz > _500MB)
+            throw("suspiciously big msg; half-assed protection is activated!");
+        val = std::vector<uint8_t>(val_sz);
+        for(unsigned i = 0; i < val_sz; ++i)
+            archive(val[i]);
+    }
 
-struct tlv_unit32 {
-    uint32bg_t val_sz;
-    uint8_t  val[];
+    tlv_unit(){}
+    tlv_unit(const tlv_unit& u): type(u.type), val(u.val) {
+        if (is_val_sz32())
+            val_sz32 = u.val_sz32;
+        else
+            val_sz16 = u.val_sz16;
+    }
+    // tlv_unit(uint16_t t, uint16_t sz): type(t), val_sz16(sz) {}
+    // tlv_unit(uint16_t t, uint32_t sz): type(t), val_sz32(sz) {}
+    tlv_unit(uint16_t t, std::vector<uint8_t> vec): type(t), val(vec) {
+        if (is_val_sz32())
+            val_sz32 = vec.size();
+        else
+            val_sz16 = vec.size();
+    }
+
+    bool is_val_sz32 () const { return type.get() & (1 << 15);}
+
+    // Deserialized size
+    uint size() {
+        return sizeof(type) + ((is_val_sz32())? sizeof(val_sz32) + val_sz32.get()
+                               : sizeof(val_sz16) + val_sz16.get());
+    }
 };
 
 struct tlv_packet_header {
@@ -84,11 +137,23 @@ struct tlv_packet_header {
         version = 0x1,
         tlv     = 0x2
     } channel;
+
+    // used by Cereal for (de)serialization
+    template<class Archive>
+    void serialize(Archive& archive) {
+        archive(magic, channel);
+    }
 };
 
 struct tlv_packet_version {
     tlv_packet_header head;
     uint16bg_t protocol_version;
+
+    // used by Cereal for (de)serialization
+    template<class Archive>
+    void serialize(Archive& archive) {
+        archive(head, protocol_version);
+    }
 };
 
 struct tlv_packet_data {
@@ -172,42 +237,62 @@ struct tlv_packet_data {
        time.*/
     uint32bg_t sequence;
     uint32bg_t block_sz;
-    uint8_t  block[]; // heterogeneous tlv_units follows
+    std::vector<tlv_unit> block;
+
+    // used by Cereal for (de)serialization
+    template<class Archive>
+    void save(Archive& archive) const {
+        archive(head, flags, family, msg_type, sequence, block_sz);
+        for(auto u : block)
+            archive(u);
+    }
+    template<class Archive>
+    void load(Archive& archive) {
+        archive(head, flags, family, msg_type, sequence, block_sz);
+        tlv_unit u;
+        for (long int i = block_sz.get(); i >= 0;) {
+            try {archive(u);} catch(...) {
+                fputs("wrn: a tlv_unit wasn't deserialized\n", stderr);
+                break;
+            }
+            block.push_back(u);
+            i -= u.size();
+        }
+    }
+
+    // constructor without block_sz argument
+    tlv_packet_data() {}
+    tlv_packet_data(tlv_packet_header h, tlv_flags flgs, tlv_family fam,
+                    uint16bg_t msg_t, uint32bg_t seq, std::vector<tlv_unit> blck):
+        head(h), flags(flgs), family(fam), msg_type(msg_t),
+        sequence(seq), block_sz(blck.size()), block(blck) {}
+
+    // *unsafe* helpers
+    uint16_t uint16_val_at(uint unit_i) const {
+        return ((uint16bg_t*)block[unit_i].val.data())->get();
+    }
+    uint szval_at(uint unit_i) const {
+        const tlv_unit& u = block[unit_i];
+        return (u.is_val_sz32())? u.val_sz32.get() : u.val_sz16.get();
+    }
 };
-#pragma pack(pop)
 
 const uint8_t magic = 0x6f; // tlv_packet::magic should always be equal to it
 
-void print_tlv_packet_data(const tlv_packet_data* h, uint tlv_sz);
+void print_tlv_packet_data(const tlv_packet_data& h);
+void print_tlv_packet_version(const tlv_packet_version& v);
+void print_tlv_packet(const uint8_t p[], uint tlv_sz);
+const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
+const std::string show_tlv_unit(const uint8_t d[], long int d_sz, uint indent_offset);
+const std::string to_hex(uint8_t* arr, uint sz_arr);
 
-void print_tlv_packet_version(const tlv_packet_version* v);
+// templates can't be exported, so we have to restort to ugly hacks
+std::vector<uint8_t> serialize(const tlv_unit&);
+std::vector<uint8_t> serialize(const tlv_packet_data&);
+std::vector<uint8_t> serialize(const tlv_packet_version&);
+std::vector<uint8_t> serialize(const uint32bg_t&);
+std::vector<uint8_t> serialize(const uint16bg_t&);
 
-void print_tlv_packet_header(const tlv_packet_header* h);
-
-void print_tlv_packet(const void* p, uint tlv_sz);
-std::string show_tlv_packet(const void* p, uint tlv_sz);
-const std::string show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset);
-
-std::string to_hex(uint8_t* arr, uint sz_arr);
-
-template<typename T>
-T* inc_by_bytes(T* t, uint n) {
-    return (T*) ((uint8_t*)t + n);
-}
-
-template<typename T>
-std::vector<uint8_t> new_packet(tlv_packet_data* packet, uint16bg_t type, T val_sz, uint8_t* val) {
-    std::vector<uint8_t> dat(sizeof(tlv_packet_data) + sizeof(tlv_unit) + sizeof(T) + val_sz.get());
-    tlv_packet_data* p = (tlv_packet_data*)dat.data();
-    *p = *packet;
-    tlv_unit* u = (tlv_unit*)&p->block;
-    *u = {type};
-    T* t = (T*)&u->tlv_unit16or32;
-    *t = val_sz;
-    uint8_t* val_arr = (uint8_t*)t + sizeof(T);
-    for (uint i = 0; i < val_sz.get(); ++i)
-        val_arr[i] = val[i];
-    return dat;
-}
-
-std::pair<uint8_t*, uint> tlv_nth_val(const uint8_t* packet, long int packet_sz, uint n);
+std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat);
+std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat);
+std::vector<tlv_unit> deserialize_units(const uint8_t dat[], long int sz_dat);

@@ -2,10 +2,12 @@
 // 1. clean up the structs
 // 2. rename functions, variables — many of them have "default" names due to me trying to make a
 // minimal working prototype
-// 3. a lot of the code tied to bad C-style protocols, move 'em to another file
+// 3. split the code
 // 4. grep -rnIi matrix
 // 5. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
 // 6. rename trillian → impp in case somebody gonna write a purple web-wrapper.
+// 7. mention in readme about the cereal const bug
+// 8. worth putting some debug prints into both tlv_unit deserialization funcs.
 
 #include <glib.h>
 #include <string>
@@ -25,49 +27,6 @@
 #include <sys/socket.h>
 #include <utility>
 #include "protocol.h"
-
-#define TLV_UNITN_RET(bits)                                             \
-    {                                                                   \
-        packet_sz -= sizeof(tlv_unit##bits);                            \
-        tlv_unit##bits* un = (tlv_unit##bits*) u->tlv_unit16or32;       \
-        if (packet_sz <= 0)                                              \
-            return {0, 0};                                              \
-        if ((int)(un->val_sz.get()) > packet_sz)                        \
-            return {0, 0};                                              \
-        if (!n)                                                         \
-            return {(uint8_t*)un->val, un->val_sz.get()};               \
-        u = (tlv_unit*)inc_by_bytes(un, sizeof(*un) + un->val_sz.get()); \
-        packet_sz -= un->val_sz.get();                                  \
-    }
-
-/* receives an array representing a packet, returns either (nth_value_pointer,
-   size), or (null, undefined) if there's no nth tlv. Indexing is zero-based */
-std::pair<uint8_t*, uint> tlv_nth_val(const uint8_t* packet, long int packet_sz, uint n){
-    tlv_packet_data* p = (tlv_packet_data*)packet;
-    packet_sz -= sizeof(tlv_packet_data);
-    if (packet_sz <=  0)
-        return {0, 0};
-    for (tlv_unit* u = (tlv_unit*)p->block; ; --n){
-        packet_sz -= sizeof(tlv_unit);
-        if (packet_sz <=  0)
-            return {0, 0};
-        if (u->type.get() & (1 << 15))
-            TLV_UNITN_RET(32)
-        else
-    {
-        packet_sz -= sizeof(tlv_unit16);
-        tlv_unit16* un = (tlv_unit16*) u->tlv_unit16or32;
-        if (packet_sz <= 0)
-            return {0, 0};
-        if ((int)(un->val_sz.get()) > packet_sz)
-            return {0, 0};
-        if (!n)
-            return {(uint8_t*)un->val, un->val_sz.get()};
-        u = (tlv_unit*)inc_by_bytes(un, sizeof(*un) + un->val_sz.get());
-        packet_sz -= un->val_sz.get();
-    }
-    }
-}
 
 extern "C" {
 
@@ -153,6 +112,8 @@ void trillian_connection_new(PurpleConnection *conn)
     purple_connection_set_protocol_data(conn, data);
 }
 
+// TODO: instead it should probably deserialize the packet on the fly to determine
+// amount of data to receive left.
 // returns -1 on error (keeps errno set), 0 on timeout, and 1 when amount of bytes
 // received. Note, there's: no way to know a number of received bytes upon
 // timeout. It can be introduced, but for now it's okay.
@@ -190,36 +151,40 @@ void trillian_request_version(int fd) {
 }
 
 void trillian_comm_feature_set(int fd) {
-    uint block_sz = sizeof(tlv_unit) + sizeof(tlv_unit16) + sizeof(STREAM::FEATURE_TLS);
+    const tlv_unit unit = { type: STREAM::FEATURES,
+                            val: serialize(uint16bg_t{STREAM::FEATURE_TLS})};
     tlv_packet_data packet = { {magic: magic, channel: tlv_packet_header::tlv},
                                 flags: tlv_packet_data::request, family: tlv_packet_data::stream,
-                                msg_type: STREAM::FEATURES_SET, sequence: 0,
-                                block_sz: block_sz };
-    uint16bg_t type = { type: STREAM::FEATURES }, val_sz = sizeof(STREAM::FEATURE_TLS);
-    uint16bg_t s = {STREAM::FEATURE_TLS};
-    std::vector<uint8_t> dat = new_packet(&packet, type, val_sz, (uint8_t*)&s);
+                                msg_type: STREAM::FEATURES_SET, sequence: 0, block: {unit} };
+    const std::vector<uint8_t> dat = serialize(packet);
     send(fd, dat.data(), dat.size(), MSG_NOSIGNAL);
     uint8_t buf[dat.size()];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
             purple_debug_info("trillian", strerror(errno));
-            // todo: tell pidgin we quitting
+            // todo: tell pidgin we're quitting
             return;
         case 0:
             purple_debug_info("trillian", "feature_set timed out\n");
-            // todo: tell pidgin we quitting
+            // todo: tell pidgin we're quitting
             return;
         default:
             break;
     }
-    std::pair<uint8_t*, uint> val = tlv_nth_val(buf, sizeof(buf), 0);
-    if (!val.first || val.second != sizeof(STREAM::FEATURE_TLS)) {
-        purple_debug_info("trillian", "feature_set malformed reply\n");
-        return; //todo pidgin we quitting
+    auto reply = deserialize_pckt(buf, sizeof(buf));
+    std::string err = (std::holds_alternative<std::string>(reply))? std::get<std::string>(reply)
+        : (std::holds_alternative<tlv_packet_version>(reply))? "version instead of data"
+        : (std::get<tlv_packet_data>(reply).block.size() != 1)? "unexpected number of units"
+        : (std::get<tlv_packet_data>(reply).szval_at(0) != sizeof(uint16bg_t))? "unexpected amount of data"
+        : "";
+    if (!err.empty()) {
+        purple_debug_info("trillian", (err + "\n").c_str());
+        //todo pidgin we're quitting
+        return;
     }
-    if (((uint16bg_t*)val.first)->get() != STREAM::FEATURE_TLS) {
+    if (std::get<tlv_packet_data>(reply).uint16_val_at(0) != STREAM::FEATURE_TLS) {
         const std::string err = "wrn: feature_set unexpected value: "
-            + to_hex(val.first, val.second) + "\n";
+            + std::to_string(std::get<tlv_packet_data>(reply).uint16_val_at(0)) + "\n";
         purple_debug_info("trillian", err.c_str());
     }
 }
@@ -266,7 +231,6 @@ void trillian_connection_start_login(PurpleConnection *conn)
         purple_debug_info("trillian", "purple_proxy_connect error\n");
         return; //todo: perror? and disabling the account
     }
-    // purple_network_listen(DEBUG_PORT, SOCK_STREAM, save_debug_port_hook, data);
 }
 
 /**
@@ -284,16 +248,6 @@ void trillian_login(PurpleAccount *acc)
 
     // conn->flags |= PURPLE_CONNECTION_HTML;
 }
-
-// void trillian_connection_new(PurpleConnection *pc)
-// {
-//      TrillianConnectionData *conn;
-
-//      g_assert(purple_connection_get_protocol_data(pc) == NULL);
-//      conn = g_new0(TrillianConnectionData, 1);
-//      conn->pc = pc;
-//      purple_connection_set_protocol_data(pc, conn);
-// }
 
 static PurplePluginProtocolInfo prpl_info =
 {
