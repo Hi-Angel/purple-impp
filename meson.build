@@ -34,6 +34,6 @@ executable(
   SOURCES + ['debug.cpp'],
   dependencies: [PURPLE],
   install: false,
-  cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17'],
+  cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter'],
   link_args: ['-fsanitize=address']
 )

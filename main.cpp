@@ -118,7 +118,7 @@ void trillian_connection_new(PurpleConnection *conn)
 // received. Note, there's: no way to know a number of received bytes upon
 // timeout. It can be introduced, but for now it's okay.
 int try_recv(short fd, uint8_t* buf, int amount, int msec) {
-    struct pollfd pfd = {fd: fd, events: POLLIN | POLLPRI};
+    struct pollfd pfd = {fd: fd, events: POLLIN | POLLPRI, revents: 0};
     int ret = poll(&pfd, 1, msec);
     if (ret <= 0)
         return ret;
