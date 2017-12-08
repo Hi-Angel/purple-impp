@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <cassert>
 
 //source: https://stackoverflow.com/a/4956493/2388257
 template <typename T>
@@ -113,9 +114,7 @@ struct tlv_unit {
         else
             val_sz16 = u.val_sz16;
     }
-    // tlv_unit(uint16_t t, uint16_t sz): type(t), val_sz16(sz) {}
-    // tlv_unit(uint16_t t, uint32_t sz): type(t), val_sz32(sz) {}
-    tlv_unit(uint16_t t, std::vector<uint8_t> vec): type(t), val(vec) {
+    tlv_unit(uint16_t t, const std::vector<uint8_t>& vec): type(t), val(vec) {
         if (is_val_sz32())
             val_sz32 = vec.size();
         else
@@ -250,13 +249,14 @@ struct tlv_packet_data {
     void load(Archive& archive) {
         archive(head, flags, family, msg_type, sequence, block_sz);
         tlv_unit u;
-        for (long int i = block_sz.get(); i >= 0;) {
+        for (long int sz = block_sz.get(); sz > 0;) {
             try {archive(u);} catch(...) {
                 fputs("wrn: a tlv_unit wasn't deserialized\n", stderr);
                 break;
             }
             block.push_back(u);
-            i -= u.size();
+            sz -= u.size();
+            assert(sz >= 0); // otherwise we took excess bytes
         }
     }
 
@@ -265,7 +265,12 @@ struct tlv_packet_data {
     tlv_packet_data(tlv_packet_header h, tlv_flags flgs, tlv_family fam,
                     uint16bg_t msg_t, uint32bg_t seq, std::vector<tlv_unit> blck):
         head(h), flags(flgs), family(fam), msg_type(msg_t),
-        sequence(seq), block_sz(blck.size()), block(blck) {}
+        sequence(seq), block(blck) {
+        uint sz = 0;
+        for (long int i = block.size() - 1; i >= 0; --i)
+            sz += block[i].size();
+        block_sz = {sz};
+    }
 
     // *unsafe* helpers
     uint16_t uint16_val_at(uint unit_i) const {

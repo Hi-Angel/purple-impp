@@ -83,7 +83,7 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
         + newl_indent + "msg_type = " + std::to_string(packet.msg_type.get())
         + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
         + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
-        + newl_indent + "block[] = " + show_tlv_unit(packet.block, indent_offset+4)
+        + newl_indent + "block[]  = " + show_tlv_unit(packet.block, indent_offset+4)
         + indent_base + "\n}";
 }
 
