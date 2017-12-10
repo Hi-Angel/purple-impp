@@ -8,6 +8,7 @@
 // 6. rename trillian → impp in case somebody gonna write a purple web-wrapper.
 // 7. mention in readme about the cereal const bug
 // 8. worth putting some debug prints into both tlv_unit deserialization funcs.
+// 9. whatever todos are in the code.
 
 #include <glib.h>
 #include <string>
@@ -26,12 +27,13 @@
 #include <proxy.h>
 #include <sys/socket.h>
 #include <utility>
+#include <sslconn.h>
 #include "protocol.h"
 
 extern "C" {
 
 // 14 is the version of at least 6.0.0 trillian client
-const tlv_packet_version version_request = {magic, tlv_packet_header::version, (uint16bg_t)14};
+const tlv_packet_version version_request = {magic, tlv_packet_header::version, uint16bg_t{14}};
 
 char Formats[] = "png,jpg,gif";
 const char DEFAULT_HOME_HOST[] = "_tcp.trillian.im";
@@ -43,8 +45,8 @@ const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
 struct TrillianConnectionData {
     PurpleConnection *conn;
     int trillian_tcp;
-    // it should wrap data in TSL when needed and send to trillian. Will work once I figure out how
-    // to act on new data in libpurple
+    // it should wrap data in TSL when needed and send to trillian. Will work once I
+    // figure out how to act on new data in libpurple
     int debug_tcp;
     const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
     const gchar *user_id;         /* our full user id ("@user:server") */
@@ -102,10 +104,8 @@ static GList *trillian_status_types(PurpleAccount *acct)
     return types;
 }
 
-/* Make conn and data to point each to another. Does TrillianConnectionData needs it?
- What if PurpleConnection pointer gets changed? */
-void trillian_connection_new(PurpleConnection *conn)
-{
+/* Make conn and data to point each to another */
+void trillian_connection_new(PurpleConnection *conn) {
     g_assert(purple_connection_get_protocol_data(conn) == NULL);
     TrillianConnectionData *data = g_new0(TrillianConnectionData, 1);
     data->conn = conn;
@@ -128,29 +128,27 @@ int try_recv(short fd, uint8_t* buf, int amount, int msec) {
         : try_recv(fd, buf, amount - ret, msec);
 }
 
-void trillian_request_version(int fd) {
+std::string trillian_request_version(int fd) {
     send(fd, &version_request, sizeof(version_request), MSG_NOSIGNAL);
     uint8_t buf[sizeof(version_request)];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
-            purple_debug_info("trillian", strerror(errno));
-            // todo: tell pidgin we quitting
-            return;
+            // todo: tell pidgin we're quitting
+            return strerror(errno);
         case 0:
-            purple_debug_info("trillian", "version_request timed out\n");
-            // todo: tell pidgin we quitting
-            return;
+            // todo: tell pidgin we're quitting
+            return "version_request timed out\n";
         default:
             break;
     }
     if (memcmp(&version_request, (char*)buf, sizeof(version_request))) {
-        const std::string err = "wrn: version_request reply differs, content:\n"
+        return "wrn: version_request reply differs, content:\n"
             + show_tlv_packet(buf, sizeof(buf)) + "\n";
-        purple_debug_info("trillian", err.c_str());
     }
+    return "";
 }
 
-void trillian_comm_feature_set(int fd) {
+std::string trillian_comm_feature_set(int fd) {
     const tlv_unit unit = { type: STREAM::FEATURES,
                             val: serialize(uint16bg_t{STREAM::FEATURE_TLS})};
     tlv_packet_data packet = { {magic: magic, channel: tlv_packet_header::tlv},
@@ -161,13 +159,11 @@ void trillian_comm_feature_set(int fd) {
     uint8_t buf[dat.size()];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
-            purple_debug_info("trillian", strerror(errno));
             // todo: tell pidgin we're quitting
-            return;
+            return strerror(errno);
         case 0:
-            purple_debug_info("trillian", "feature_set timed out\n");
             // todo: tell pidgin we're quitting
-            return;
+            return "feature_set timed out\n";
         default:
             break;
     }
@@ -178,29 +174,46 @@ void trillian_comm_feature_set(int fd) {
         : (std::get<tlv_packet_data>(reply).szval_at(0) != sizeof(uint16bg_t))? "unexpected amount of data"
         : "";
     if (!err.empty()) {
-        purple_debug_info("trillian", (err + "\n").c_str());
         //todo pidgin we're quitting
-        return;
+        return err + "\n";
     }
     if (std::get<tlv_packet_data>(reply).uint16_val_at(0) != STREAM::FEATURE_TLS) {
-        const std::string err = "wrn: feature_set unexpected value: "
+        return "wrn: feature_set unexpected value: "
             + std::to_string(std::get<tlv_packet_data>(reply).uint16_val_at(0)) + "\n";
-        purple_debug_info("trillian", err.c_str());
     }
+    return "";
+}
+
+// 6. Bind a device to the stream and retrieve presence lists, group chats, and
+// offline messages.
+void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
+    // todo: for now let's just bind, and retrieve presence list
 }
 
 void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
-    std::string msg = "tcp connection";
+    std::string ret ="tcp-connection";
     if (error_message) {
-        msg += error_message;
-        purple_debug_info("trillian", (msg + "\n").c_str());
+        ret += error_message;
+        purple_debug_info("trillian", (ret + "\n").c_str());
         return;
     }
-    ((TrillianConnectionData*)data)->trillian_tcp = src;
-    purple_debug_info("trillian", (msg + "\n").c_str());
+    TrillianConnectionData* con_dat = ((TrillianConnectionData*)data);
+    con_dat->trillian_tcp = src;
+    purple_debug_info("trillian", (ret + " is in progress\n").c_str());
     // Negotiate an IMPP protocol version
-    trillian_request_version(src);
-    trillian_comm_feature_set(src);
+    ret = trillian_request_version(src);
+    if (!ret.empty()) { // todo pidgin we're quitting
+        purple_debug_info("trillian", ret.c_str());
+        return;
+    }
+    ret = trillian_comm_feature_set(src);
+    if (!ret.empty()) { // todo pidgin we're quitting
+        purple_debug_info("trillian", ret.c_str());
+        return;
+    }
+    purple_debug_info("trillian", "tcp-connection established, configuring TLS\n");
+    purple_ssl_connect(con_dat->conn->account, TEST_TRILLIAN_HOST, TEST_TRILLIAN_PORT,
+                       trillian_on_tls_connect, 0, data);
 }
 
 void save_debug_port_hook(int listenfd, gpointer data) {
@@ -213,8 +226,7 @@ void save_debug_port_hook(int listenfd, gpointer data) {
     purple_debug_info("trillian", msg.c_str());
 }
 
-void trillian_connection_start_login(PurpleConnection *conn)
-{
+void trillian_connection_start_login(PurpleConnection *conn) {
     PurpleAccount *acct = conn->account;
     TrillianConnectionData *data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
     // const gchar *homeserver = purple_account_get_string(conn->account,
@@ -336,7 +348,7 @@ static PurplePluginProtocolInfo prpl_info =
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "6trillian"
+#define DEBUGSUFFIX "7trillian"
 char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
 char PLUGIN_NAME[]     = DEBUGSUFFIX;
 char DISPLAY_VERSION[] = "1.0";

@@ -6,7 +6,7 @@
 using cstr = const std::string;
 using nothing = std::monostate;
 
-cstr to_hex(uint8_t* arr, uint sz_arr) {
+cstr to_hex(const uint8_t* arr, uint sz_arr) {
     const uint byte_image = 2, section = byte_image + 1;
     char buf[section * sz_arr];
     for (uint i = 0; i < sz_arr; ++i) {
@@ -29,17 +29,23 @@ cstr show_tlv_packet_header(const tlv_packet_header& h, uint indent_offset){
 }
 
 cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset) {
+    if (units.size() == 0)
+        return "";
     cstr indent_base = cstr(indent_offset, ' ');
-    cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
     std::string ret;
-    for (tlv_unit u : units) {
-        cstr val_sz = "val_sz = " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
-                                     : std::to_string(u.val_sz16.get()));
-        ret += "tlv_unit {"
-            + newl_indent + "type   = " + std::to_string(u.type.get())
-            + newl_indent + val_sz
-            + newl_indent + "val[] = " + to_hex(u.val.data(), u.val.size())
-            + "\n" + indent_base + "}\n";
+    auto unit_to_str = [&indent_offset, &indent_base](const tlv_unit& u) {
+            cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
+            cstr val_sz = "val_sz = " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
+                                        : std::to_string(u.val_sz16.get()));
+            return "tlv_unit {"
+                + newl_indent + "type   = " + std::to_string(u.type.get())
+                + newl_indent + val_sz
+                + newl_indent + "val[] = " + to_hex(u.val.data(), u.val.size())
+                + "\n" + indent_base + "}\n";
+        };
+    ret += unit_to_str(units[0]);
+    for (uint i = 1; i < units.size(); ++i) {
+        ret += indent_base + unit_to_str(units[i]);
     }
     return ret;
 }

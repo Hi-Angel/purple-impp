@@ -13,27 +13,19 @@ int main(int argc, char *argv[])
     const uint8_t request2[]= {0x6f, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
                                0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01,
                                0x00, 0x02, 0x00, 0x03};
+    const uint8_t request3[] = {0x6f, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x78, 0x00, 0x01, 0x00, 0x08, 0x54, 0x72, 0x69, 0x6c, 0x6c, 0x69, 0x61, 0x6e, 0x00, 0x02, 0x00, 0x07, 0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x00, 0x04, 0x00, 0x04, 0x69, 0x33, 0x38, 0x36, 0x00, 0x05, 0x00, 0x03, 0x35, 0x2e, 0x33, 0x00, 0x06, 0x00, 0x02, 0x31, 0x31, 0x00, 0x08, 0x00, 0x0a, 0x53, 0x54, 0x41, 0x52, 0x53, 0x43, 0x52, 0x45, 0x41, 0x4d, 0x00, 0x0b, 0x00, 0x02, 0x00, 0x01, 0x00, 0x10, 0x00, 0x01, 0x00, 0x00, 0x0d, 0x00, 0x12, 0x00, 0x01, 0x42, 0x04, 0x00, 0x02, 0x42, 0x09, 0x42, 0x03, 0x42, 0x06, 0x42, 0x05, 0x42, 0x07, 0x42, 0x08, 0x00, 0x07, 0x00, 0x19, 0x54, 0x72, 0x69, 0x6c, 0x6c, 0x69, 0x61, 0x6e, 0x2f, 0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x73, 0x20, 0x35, 0x2e, 0x33, 0x2e, 0x30, 0x2e, 0x31, 0x31};
     print_tlv_packet(request, sizeof(request));
     print_tlv_packet(request2, sizeof(request2));
-    // std::vector<uint8_t> vec = {1, 2};
-    // tlv_unit u = {0, vec};
-    // std::vector<uint8_t> uv = serialize(u);
-    // fprintf(stderr, "uv sz is %lu\n", uv.size());
-
-    // std::vector<tlv_unit> u2 = deserialize_units(uv.data(), uv.size());
-    // fprintf(stderr, "u2 sz is %lu\n", u2.size());
-
-    // auto u3 = deserialize<tlv_unit>(uv.data(), uv.size());
-    // fprintf(stderr, "u3 sz is %lu\n", u3.size());
-    std::vector<uint8_t> vec = serialize(uint16bg_t{STREAM::FEATURE_TLS});
-    const tlv_unit unit = { type: STREAM::FEATURES,
-                            val: vec };
-    tlv_packet_data packet = { {magic: magic, channel: tlv_packet_header::tlv},
-                                flags: tlv_packet_data::request, family: tlv_packet_data::stream,
-                                msg_type: STREAM::FEATURES_SET, sequence: 0, block: {unit} };
-    const std::vector<uint8_t> dat = serialize(packet);
-    auto my_variant = deserialize_pckt(dat);
-    if (holds_alternative<std::string>(my_variant))
-        fputs(("err: " + std::get<std::string>(my_variant) + "\n").c_str(), stderr);
-    print_tlv_packet_data(std::get<tlv_packet_data>(my_variant));
+    print_tlv_packet(request3, sizeof(request3));
+    // std::vector<uint8_t> vec = serialize(uint16bg_t{STREAM::FEATURE_TLS});
+    // const tlv_unit unit = { type: STREAM::FEATURES,
+    //                         val: vec };
+    // tlv_packet_data packet = { {magic: magic, channel: tlv_packet_header::tlv},
+    //                             flags: tlv_packet_data::request, family: tlv_packet_data::stream,
+    //                             msg_type: STREAM::FEATURES_SET, sequence: 0, block: {unit} };
+    // const std::vector<uint8_t> dat = serialize(packet);
+    // auto my_variant = deserialize_pckt(dat);
+    // if (holds_alternative<std::string>(my_variant))
+    //     fputs(("err: " + std::get<std::string>(my_variant) + "\n").c_str(), stderr);
+    // print_tlv_packet_data(std::get<tlv_packet_data>(my_variant));
 }
