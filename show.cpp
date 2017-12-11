@@ -6,6 +6,22 @@
 using cstr = const std::string;
 using nothing = std::monostate;
 
+void hexdump(const char *buf, uint buflen) {
+  for (uint i=0; i<buflen; i+=16) {
+    fprintf(stderr, "%06x: ", i);
+    for (uint j=0; j<16; j++)
+      if (i+j < buflen)
+        fprintf(stderr, "%02x ", buf[i+j]);
+      else
+        fprintf(stderr, "   ");
+    fprintf(stderr, " ");
+    for (uint j=0; j<16; j++)
+      if (i+j < buflen)
+          fprintf(stderr, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
+    fprintf(stderr, "\n");
+  }
+}
+
 cstr to_hex(const uint8_t* arr, uint sz_arr) {
     const uint byte_image = 2, section = byte_image + 1;
     char buf[section * sz_arr];
@@ -13,7 +29,15 @@ cstr to_hex(const uint8_t* arr, uint sz_arr) {
         snprintf(buf + i * section, section, "%02X", arr[i]);
         buf[i * section + byte_image] = ' ';
     }
-    return std::string(buf, buf+sizeof(buf)-1); // -1 for trailing space
+
+    // this is an ugly hack to get a hex+ascii. The correct way requires ½ a day of
+    // twiddling snprintf()s with lots of offsets (the more so because snprintf() adds
+    // zero bytes), I just don't consider the outcome worth that much effort.
+    puts("trillian: hex start");
+    hexdump((char*)arr, sz_arr);
+    puts("trillian: hex end");
+
+    return {buf, buf+sizeof(buf)-1}; // -1 for trailing space
 }
 
 cstr show_tlv_packet_header(const tlv_packet_header& h, uint indent_offset){
