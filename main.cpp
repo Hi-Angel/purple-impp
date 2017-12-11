@@ -29,17 +29,14 @@
 #include <utility>
 #include <sslconn.h>
 #include "protocol.h"
+#include "common-consts.h"
 
 extern "C" {
-
-// 14 is the version of at least 6.0.0 trillian client
-const tlv_packet_version version_request = {magic, tlv_packet_header::version, uint16bg_t{14}};
 
 char Formats[] = "png,jpg,gif";
 const char DEFAULT_HOME_HOST[] = "_tcp.trillian.im";
 const char TEST_TRILLIAN_HOST[] = "74.201.34.42";
 const uint TEST_TRILLIAN_PORT = 3158;
-const uint DEBUG_PORT = 7777;
 const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
 
 struct TrillianConnectionData {
@@ -187,6 +184,7 @@ std::string trillian_comm_feature_set(int fd) {
 // 6. Bind a device to the stream and retrieve presence lists, group chats, and
 // offline messages.
 void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
+    purple_debug_info("trillian", "SSL connection established\n");
     // todo: for now let's just bind, and retrieve presence list
 }
 
@@ -212,8 +210,8 @@ void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_m
         return;
     }
     purple_debug_info("trillian", "tcp-connection established, configuring TLS\n");
-    purple_ssl_connect(con_dat->conn->account, TEST_TRILLIAN_HOST, TEST_TRILLIAN_PORT,
-                       trillian_on_tls_connect, 0, data);
+    purple_ssl_connect_with_host_fd(con_dat->conn->account, src, trillian_on_tls_connect,
+                                    0, TEST_TRILLIAN_HOST, data);
 }
 
 void save_debug_port_hook(int listenfd, gpointer data) {
@@ -348,7 +346,7 @@ static PurplePluginProtocolInfo prpl_info =
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "7trillian"
+#define DEBUGSUFFIX "8trillian"
 char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
 char PLUGIN_NAME[]     = DEBUGSUFFIX;
 char DISPLAY_VERSION[] = "1.0";

@@ -1,3 +1,6 @@
+#ifndef PROTOCOL_H
+#define PROTOCOL_H
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -58,11 +61,35 @@ enum TLV_TYPE: uint16_t {
     TIMESTAMP = 4
 };
 
-/* a tlv_unit value, can be used with bitmask */
+/* a tlv_unit::val, can be used with bitmask */
 enum TLV_VAL: uint16_t {
     FEATURE_NONE        = 0,
     FEATURE_TLS         = 1,
     FEATURE_COMPRESSION = 2
+};
+}
+
+namespace DEVICE {
+enum TLV_TYPE: uint16_t {
+    ERRORCODE           = 0,
+    CLIENT_NAME         = 1,
+    CLIENT_PLATFORM     = 2,
+    CLIENT_MODEL        = 3,
+    CLIENT_ARCH         = 4,
+    CLIENT_VERSION      = 5,
+    CLIENT_BUILD        = 6,
+    CLIENT_DESCRIPTION  = 7,
+    DEVICE_NAME         = 8,
+    IP_ADDRESS          = 9,
+    CONNECTED_AT        = 10,
+    STATUS              = 11,
+    STATUS_MESSAGE      = 12,
+    CAPABILITIES        = 13,
+    IS_IDLE             = 14,
+    IS_MOBILE           = 15,
+    IS_STATUS_AUTOMATIC = 16,
+    SERVER              = 17,
+    DEVICE_TUPLE        = 18
 };
 }
 
@@ -282,8 +309,6 @@ struct tlv_packet_data {
     }
 };
 
-const uint8_t magic = 0x6f; // tlv_packet::magic should always be equal to it
-
 void print_tlv_packet_data(const tlv_packet_data& h);
 void print_tlv_packet_version(const tlv_packet_version& v);
 void print_tlv_packet(const uint8_t p[], uint tlv_sz);
@@ -301,3 +326,5 @@ std::vector<uint8_t> serialize(const uint16bg_t&);
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat);
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat);
 std::vector<tlv_unit> deserialize_units(const uint8_t dat[], long int sz_dat);
+
+#endif //PROTOCOL_H

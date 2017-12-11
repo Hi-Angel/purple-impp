@@ -28,31 +28,80 @@ cstr show_tlv_packet_header(const tlv_packet_header& h, uint indent_offset){
         + "\n" + indent_base + "}";
 }
 
-cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset) {
+cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
+    switch (family.get()) {
+        case tlv_packet_data::FAMILY::stream:
+            switch (type) {
+                case STREAM::ERRORCODE: return "ERRORCODE";
+                case STREAM::FEATURES:  return "FEATURES";
+                case STREAM::MECHANISM: return "MECHANISM";
+                case STREAM::NAME:      return "NAME";
+                case STREAM::TIMESTAMP: return "TIMESTAMP";
+                default: break;
+            }
+            break;
+        case tlv_packet_data::FAMILY::device:
+            switch (type) {
+                case DEVICE::ERRORCODE:           return "ERRORCODE";
+                case DEVICE::CLIENT_NAME:         return "CLIENT_NAME";
+                case DEVICE::CLIENT_PLATFORM:     return "CLIENT_PLATFORM";
+                case DEVICE::CLIENT_MODEL:        return "CLIENT_MODEL";
+                case DEVICE::CLIENT_ARCH:         return "CLIENT_ARCH";
+                case DEVICE::CLIENT_VERSION:      return "CLIENT_VERSION";
+                case DEVICE::CLIENT_BUILD:        return "CLIENT_BUILD";
+                case DEVICE::CLIENT_DESCRIPTION:  return "CLIENT_DESCRIPTION";
+                case DEVICE::DEVICE_NAME:         return "DEVICE_NAME";
+                case DEVICE::IP_ADDRESS:          return "IP_ADDRESS";
+                case DEVICE::CONNECTED_AT:        return "CONNECTED_AT";
+                case DEVICE::STATUS:              return "STATUS";
+                case DEVICE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
+                case DEVICE::CAPABILITIES:        return "CAPABILITIES";
+                case DEVICE::IS_IDLE:             return "IS_IDLE";
+                case DEVICE::IS_MOBILE:           return "IS_MOBILE";
+                case DEVICE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
+                case DEVICE::SERVER:              return "SERVER";
+                case DEVICE::DEVICE_TUPLE:        return "DEVICE_TUPLE";
+                default: break;
+            }
+            break;
+        case tlv_packet_data::FAMILY::lists:
+            break; // todo
+        case tlv_packet_data::FAMILY::im:
+            break; // todo
+        case tlv_packet_data::FAMILY::presence:
+            break; // todo
+        case tlv_packet_data::FAMILY::avatar:
+            break; // todo
+        case tlv_packet_data::FAMILY::group_chats:
+            break; // todo
+    }
+    return std::to_string(type);
+}
+
+cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset, tlv_packet_data::tlv_family family) {
     if (units.size() == 0)
         return "";
     cstr indent_base = cstr(indent_offset, ' ');
     std::string ret;
-    auto unit_to_str = [&indent_offset, &indent_base](const tlv_unit& u) {
+    auto unit_to_str = [&indent_offset, &indent_base, &family](const tlv_unit& u) {
             cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
             cstr val_sz = "val_sz = " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
                                         : std::to_string(u.val_sz16.get()));
             return "tlv_unit {"
-                + newl_indent + "type   = " + std::to_string(u.type.get())
+                + newl_indent + "type   = " + show_tlv_type(family, u.type.get())
                 + newl_indent + val_sz
                 + newl_indent + "val[] = " + to_hex(u.val.data(), u.val.size())
                 + "\n" + indent_base + "}\n";
         };
     ret += unit_to_str(units[0]);
-    for (uint i = 1; i < units.size(); ++i) {
+    for (uint i = 1; i < units.size(); ++i)
         ret += indent_base + unit_to_str(units[i]);
-    }
     return ret;
 }
 
-cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset) {
+cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, tlv_packet_data::tlv_family family) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
-    return show_tlv_unit(units, indent_offset);
+    return show_tlv_unit(units, indent_offset, family);
 }
 
 // human-readable view of the struct *not surrounded* by whitespace
@@ -61,27 +110,27 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
     cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
     cstr flags = [packet]() -> cstr { // not yet clear if flags disjoint or not
             switch(packet.flags.get()) {
-                case tlv_packet_data::request: return cstr("request");
-                case tlv_packet_data::response: return cstr("response");
+                case tlv_packet_data::request:    return cstr("request");
+                case tlv_packet_data::response:   return cstr("response");
                 case tlv_packet_data::indication: return cstr("indication");
-                case tlv_packet_data::error: return cstr("error");
-                case tlv_packet_data::extension: return cstr("extension");
+                case tlv_packet_data::error:      return cstr("error");
+                case tlv_packet_data::extension:  return cstr("extension");
                 default: return "(unkn) " + std::to_string(packet.flags.get());
             }
         }();
     cstr family = [packet]() -> cstr {
             switch(packet.family.get()) {
-                case tlv_packet_data::stream: return cstr("stream");
-                case tlv_packet_data::device: return cstr("device");
-                case tlv_packet_data::lists: return cstr("lists");
-                case tlv_packet_data::im: return cstr("im");
-                case tlv_packet_data::presence: return cstr("presence");
-                case tlv_packet_data::avatar: return cstr("avatar");
+                case tlv_packet_data::stream:      return cstr("stream");
+                case tlv_packet_data::device:      return cstr("device");
+                case tlv_packet_data::lists:       return cstr("lists");
+                case tlv_packet_data::im:          return cstr("im");
+                case tlv_packet_data::presence:    return cstr("presence");
+                case tlv_packet_data::avatar:      return cstr("avatar");
                 case tlv_packet_data::group_chats: return cstr("group_chats");
                 default: return "(unkn) " + std::to_string(packet.family.get());
             }
         }();
-    return "tlv_value_header {"
+    return "tlv_packet_data {"
         // don't align "head = ", it looks ugly in the output
         + newl_indent + "head = " + show_tlv_packet_header(packet.head, indent_offset+4)
         + newl_indent + "flags    = " + flags
@@ -89,7 +138,7 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
         + newl_indent + "msg_type = " + std::to_string(packet.msg_type.get())
         + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
         + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
-        + newl_indent + "block[]  = " + show_tlv_unit(packet.block, indent_offset+4)
+        + newl_indent + "block[]  = " + show_tlv_unit(packet.block, indent_offset+4, packet.family.get())
         + indent_base + "\n}";
 }
 
