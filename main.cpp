@@ -42,13 +42,9 @@ const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
 struct TrillianConnectionData {
     PurpleConnection *conn;
     int trillian_tcp;
-    // it should wrap data in TSL when needed and send to trillian. Will work once I
-    // figure out how to act on new data in libpurple
-    int debug_tcp;
     const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
     const gchar *user_id;         /* our full user id ("@user:server") */
     const gchar *access_token;    /* access token corresponding to our user */
-
 };
 
 
@@ -72,7 +68,6 @@ static void trillian_close(PurpleConnection *conn)
     purple_debug_info("trillian", "trillian closing connection\n");
     TrillianConnectionData *data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
     close(data->trillian_tcp);
-    close(data->debug_tcp);
     // todo: close connection
 }
 
@@ -212,16 +207,6 @@ void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_m
     purple_debug_info("trillian", "tcp-connection established, configuring TLS\n");
     purple_ssl_connect_with_host_fd(con_dat->conn->account, src, trillian_on_tls_connect,
                                     0, TEST_TRILLIAN_HOST, data);
-}
-
-void save_debug_port_hook(int listenfd, gpointer data) {
-    std::string msg = "save_debug_port_hook";
-    if (listenfd != -1)
-        msg += " debug port wasn't opened"; // maybe perror would work?
-    else
-        ((TrillianConnectionData*)data)->debug_tcp = listenfd;
-    msg += "\n";
-    purple_debug_info("trillian", msg.c_str());
 }
 
 void trillian_connection_start_login(PurpleConnection *conn) {
