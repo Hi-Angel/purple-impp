@@ -70,6 +70,13 @@ enum TLV_VAL: uint16_t {
 }
 
 namespace DEVICE {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    BIND   = 1,
+    UPDATE = 2,
+    UNBIND = 3
+};
+
 enum TLV_TYPE: uint16_t {
     ERRORCODE           = 0,
     CLIENT_NAME         = 1,
@@ -234,7 +241,9 @@ struct tlv_packet_data {
        from extended families with the extension bit. */
     tlv_family family;
 
-    /* The most significant bit of a message type value is reserved. The allowable
+    /* Meaning determiend by family.
+
+       The most significant bit of a message type value is reserved. The allowable
        range of values for types is therefore 0-32767. Within that range:
 
        1. The values from 0-16383 are reserved for the core IMPP protocol.
@@ -262,7 +271,7 @@ struct tlv_packet_data {
        sequence associated with a message and be prepard to act on its response at any
        time.*/
     uint32bg_t sequence;
-    uint32bg_t block_sz;
+    uint32bg_t block_sz; // block size in bytes
     std::vector<tlv_unit> block;
 
     // used by Cereal for (de)serialization
@@ -299,7 +308,12 @@ struct tlv_packet_data {
         block_sz = {sz};
     }
 
-    // *unsafe* helpers
+    static const uint min_data_pckt_sz = sizeof(tlv_packet_header) + sizeof(flags)
+        + sizeof(family) + sizeof(msg_type) + sizeof(sequence) + sizeof(block_sz);
+
+    uint curr_pckt_sz() { return min_data_pckt_sz + block_sz.get(); }
+
+    // *unsafe* helpers, ensure whatever you're accessing exists before calling
     uint16_t uint16_val_at(uint unit_i) const {
         return ((uint16bg_t*)block[unit_i].val.data())->get();
     }

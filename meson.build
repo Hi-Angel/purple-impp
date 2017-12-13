@@ -8,7 +8,8 @@ SOURCES = [
   'main.cpp',
   'tests.cpp',
   'show.cpp',
-  'serialize.cpp'
+  'serialize.cpp',
+  'utils.cpp'
 ]
 
 add_project_arguments(

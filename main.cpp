@@ -29,7 +29,10 @@
 #include <utility>
 #include <sslconn.h>
 #include "protocol.h"
+#include "utils.h"
 #include "common-consts.h"
+
+using namespace std;
 
 extern "C" {
 
@@ -38,6 +41,16 @@ const char DEFAULT_HOME_HOST[] = "_tcp.trillian.im";
 const char TEST_TRILLIAN_HOST[] = "74.201.34.42";
 const uint TEST_TRILLIAN_PORT = 3158;
 const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
+const uint min_pckt_sz = sizeof(tlv_packet_version);
+
+struct ConnState {
+    // scratch buf for input data. Performance-wise it supposed to leave allocated
+    // space untouched most of times on shrink, hence just do resize() instead of
+    // storing a uint for tracking the size.
+    // todo: performance-wise std::dequeue is better, but unclear how to deal with
+    // uncontiguous memory, nor a priority
+    std::vector<uint8_t> buf;
+};
 
 struct TrillianConnectionData {
     PurpleConnection *conn;
@@ -45,8 +58,8 @@ struct TrillianConnectionData {
     const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
     const gchar *user_id;         /* our full user id ("@user:server") */
     const gchar *access_token;    /* access token corresponding to our user */
+    ConnState* state;
 };
-
 
 /**
  * Called to get the icon name for the given buddy and account.
@@ -68,7 +81,8 @@ static void trillian_close(PurpleConnection *conn)
     purple_debug_info("trillian", "trillian closing connection\n");
     TrillianConnectionData *data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
     close(data->trillian_tcp);
-    // todo: close connection
+    free(data->state);
+    // todo: tell pidgin it's over
 }
 
 static void trillian_destroy(PurplePlugin *plugin) {
@@ -103,13 +117,13 @@ void trillian_connection_new(PurpleConnection *conn) {
     data->conn = conn;
     purple_connection_set_protocol_data(conn, data);
 }
-
-// TODO: instead it should probably deserialize the packet on the fly to determine
-// amount of data to receive left.
+// amount can be equal to zero.
 // returns -1 on error (keeps errno set), 0 on timeout, and 1 when amount of bytes
 // received. Note, there's: no way to know a number of received bytes upon
 // timeout. It can be introduced, but for now it's okay.
-int try_recv(short fd, uint8_t* buf, int amount, int msec) {
+int try_recv(int fd, uint8_t* buf, int amount, int msec) {
+    if (amount == 0)
+        return 1;
     struct pollfd pfd = {fd: fd, events: POLLIN | POLLPRI, revents: 0};
     int ret = poll(&pfd, 1, msec);
     if (ret <= 0)
@@ -120,13 +134,74 @@ int try_recv(short fd, uint8_t* buf, int amount, int msec) {
         : try_recv(fd, buf, amount - ret, msec);
 }
 
-std::string trillian_request_version(int fd) {
+// returns units, and int — 1 for okay, 0 for timeout, -1 for error (see errno)
+pair<int,vector<tlv_unit>> recv_units(int fd, uint bytes, uint msec) {
+    std::vector<tlv_unit> units;
+    for (uint recvd = 0; recvd < bytes;) {
+        const uint min_body = sizeof(tlv_unit::type) + sizeof(tlv_unit::val_sz16),
+            max_body = sizeof(tlv_unit::type) + sizeof(tlv_unit::val_sz32);
+        vector<uint8_t> buf = vector<uint8_t>(max_body);
+        auto recv1 = [fd,msec,&buf](uint offset, uint sz) -> int { return try_recv(fd, &buf[0] + offset, sz, msec); };
+        int ret = recv1(0, min_body);
+        if (ret <= 0)
+            return {ret, units};
+        if (((tlv_unit*)(&buf[0]))->is_val_sz32()) {
+            ret = recv1(min_body, max_body - min_body);
+            if (ret <= 0)
+                return {ret, units};
+            buf.resize(max_body + ((tlv_unit*)(&buf[0]))->val_sz32.get());
+            ret = recv1(max_body, ((tlv_unit*)(&buf[0]))->val_sz32.get());
+            if (ret <= 0)
+                return {ret, units};
+        } else {
+            buf.resize(min_body + ((tlv_unit*)(&buf[0]))->val_sz16.get());
+            ret = recv1(min_body, ((tlv_unit*)(&buf[0]))->val_sz16.get());
+            if (ret <= 0)
+                return {ret, units};
+        }
+        std::vector<tlv_unit> unit = deserialize_units(buf.data(), buf.size());
+        assert(unit.size() == 1);
+        units += unit;
+        recvd += buf.size();
+        assert(recvd <= bytes);
+    }
+    return {1, units};
+}
+
+variant<int, tlv_packet_version, tlv_packet_data> recv_pckt(int fd, int msec) {
+    uint8_t buf[tlv_packet_data::min_data_pckt_sz];
+    int ret = try_recv(fd, buf, min_pckt_sz, msec);
+    if (ret <= 0)
+        return {ret};
+    auto maybe_min_pckt = deserialize_pckt(buf, min_pckt_sz);
+    if (holds_alternative<tlv_packet_version>(maybe_min_pckt))
+        return {get<tlv_packet_version>(maybe_min_pckt)};
+    ret = try_recv(fd, buf + min_pckt_sz, tlv_packet_data::min_data_pckt_sz - min_pckt_sz, msec);
+    if (ret <= 0)
+        return {ret};
+    if (holds_alternative<std::string>(maybe_min_pckt)) {
+        purple_debug_info("trillian", ("err:" + std::get<std::string>(maybe_min_pckt) + "\n").c_str());
+        return {-1}; //unlikely to happen anyway
+    }
+
+    // receive the units
+    tlv_packet_data& pckt = get<tlv_packet_data>(maybe_min_pckt);
+    assert(pckt.block.size() == 0);
+    pckt.block.resize(pckt.block_sz.get());
+    pair<int,vector<tlv_unit>> p = recv_units(fd, pckt.block_sz.get(), msec);
+    if (p.first <= 0)
+        return {p.first};
+    pckt.block += p.second;
+    return {pckt};
+}
+
+const std::string trillian_request_version(int fd) {
     send(fd, &version_request, sizeof(version_request), MSG_NOSIGNAL);
     uint8_t buf[sizeof(version_request)];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
             // todo: tell pidgin we're quitting
-            return strerror(errno);
+            return strerror_newl(errno);
         case 0:
             // todo: tell pidgin we're quitting
             return "version_request timed out\n";
@@ -152,7 +227,7 @@ std::string trillian_comm_feature_set(int fd) {
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
             // todo: tell pidgin we're quitting
-            return strerror(errno);
+            return strerror_newl(errno);
         case 0:
             // todo: tell pidgin we're quitting
             return "feature_set timed out\n";
@@ -176,11 +251,45 @@ std::string trillian_comm_feature_set(int fd) {
     return "";
 }
 
+static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
+    purple_debug_info("trillian", "data_incoming called\n");
+    ConnState* info = (ConnState*) in;
+    std::vector<uint8_t>& buf = info->buf;
+    do {
+        uint old_sz = buf.size(), toread = 256;
+        buf.resize(old_sz + toread);
+        uint bytes = purple_ssl_read(ssl, &buf[0], toread);
+        if (bytes != toread) {
+            buf.resize(old_sz + bytes);
+            break;
+        }
+    } while (true);
+    // if deserializeble, process and clear input vector
+    variant<tlv_packet_data,tlv_packet_version,std::string> pckt = deserialize_pckt(buf.data(), buf.size());
+    if (holds_alternative<string>(pckt)) {
+        string err = "can't deserialize incoming pckt: " + get<string>(pckt) + "\n";
+        purple_debug_info("trillian", err.c_str());
+        return; //todo: assume for now not all data came
+    } else if (holds_alternative<tlv_packet_version>(pckt)) {
+        purple_debug_info("trillian", "wrn: version in the middle of a session\n");
+        buf.erase(buf.begin(), buf.begin() + sizeof(tlv_packet_version));
+    } else { // tlv_packet_data
+        // todo
+        print_tlv_packet_data(get<tlv_packet_data>(pckt));
+        buf.erase(buf.begin(), buf.begin() + get<tlv_packet_data>(pckt).curr_pckt_sz());
+    }
+}
+
 // 6. Bind a device to the stream and retrieve presence lists, group chats, and
 // offline messages.
 void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("trillian", "SSL connection established\n");
-    // todo: for now let's just bind, and retrieve presence list
+    PurpleConnection *conn = (PurpleConnection*)data;
+    TrillianConnectionData *t_data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
+    t_data->state = new ConnState;
+    purple_ssl_input_add(ssl, data_incoming, t_data->state);
+    const std::vector<uint8_t> dat = serialize(client_info);
+    purple_ssl_write(ssl, dat.data(), dat.size());
 }
 
 void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
@@ -205,8 +314,12 @@ void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_m
         return;
     }
     purple_debug_info("trillian", "tcp-connection established, configuring TLS\n");
+    auto ssl_err = [](PurpleSslConnection*, PurpleSslErrorType, gpointer) {
+            purple_debug_info("trillian", "TLS error\n"); //todo
+        };
     purple_ssl_connect_with_host_fd(con_dat->conn->account, src, trillian_on_tls_connect,
-                                    0, TEST_TRILLIAN_HOST, data);
+                                    ssl_err,
+                                    TEST_TRILLIAN_HOST, data);
 }
 
 void trillian_connection_start_login(PurpleConnection *conn) {
@@ -331,7 +444,7 @@ static PurplePluginProtocolInfo prpl_info =
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "8trillian"
+#define DEBUGSUFFIX "7trillian"
 char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
 char PLUGIN_NAME[]     = DEBUGSUFFIX;
 char DISPLAY_VERSION[] = "1.0";
@@ -359,7 +472,7 @@ static PurplePluginInfo info =
     HOMEPAGE,                /* homepage */
     0,                       /* load */
     0,                       /* unload */
-    trillian_destroy, /* destroy */
+    trillian_destroy,        /* destroy */
     0,                       /* ui_info */
     &prpl_info,              /* extra_info */
     0,                       /* prefs_info */
