@@ -121,7 +121,7 @@ void trillian_connection_new(PurpleConnection *conn) {
 // returns -1 on error (keeps errno set), 0 on timeout, and 1 when amount of bytes
 // received. Note, there's: no way to know a number of received bytes upon
 // timeout. It can be introduced, but for now it's okay.
-int try_recv(int fd, uint8_t* buf, int amount, int msec) {
+int try_recv(int fd, uint8_t* buf, uint amount, int msec) {
     if (amount == 0)
         return 1;
     struct pollfd pfd = {fd: fd, events: POLLIN | POLLPRI, revents: 0};
@@ -130,12 +130,12 @@ int try_recv(int fd, uint8_t* buf, int amount, int msec) {
         return ret;
     ret = recv(fd, (char*)buf, amount, MSG_NOSIGNAL);
     return (ret < 0)? ret
-        : (ret == amount)? 1
-        : try_recv(fd, buf, amount - ret, msec);
+        : ((uint)ret == amount)? 1
+        : try_recv(fd, buf, amount - (uint)ret, msec);
 }
 
 // returns units, and int — 1 for okay, 0 for timeout, -1 for error (see errno)
-pair<int,vector<tlv_unit>> recv_units(int fd, uint bytes, uint msec) {
+pair<int,vector<tlv_unit>> recv_units(int fd, uint bytes, int msec) {
     std::vector<tlv_unit> units;
     for (uint recvd = 0; recvd < bytes;) {
         const uint min_body = sizeof(tlv_unit::type) + sizeof(tlv_unit::val_sz16),
@@ -196,8 +196,8 @@ variant<int, tlv_packet_version, tlv_packet_data> recv_pckt(int fd, int msec) {
 }
 
 const std::string trillian_request_version(int fd) {
-    send(fd, &version_request, sizeof(version_request), MSG_NOSIGNAL);
-    uint8_t buf[sizeof(version_request)];
+    send(fd, &templ_version_request, sizeof(templ_version_request), MSG_NOSIGNAL);
+    uint8_t buf[sizeof(templ_version_request)];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
             // todo: tell pidgin we're quitting
@@ -208,7 +208,7 @@ const std::string trillian_request_version(int fd) {
         default:
             break;
     }
-    if (memcmp(&version_request, (char*)buf, sizeof(version_request))) {
+    if (memcmp(&templ_version_request, (char*)buf, sizeof(templ_version_request))) {
         return "wrn: version_request reply differs, content:\n"
             + show_tlv_packet(buf, sizeof(buf)) + "\n";
     }
@@ -255,13 +255,12 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
     purple_debug_info("trillian", "data_incoming called\n");
     TrillianConnectionData* t_data = ((TrillianConnectionData*)in);
     std::vector<uint8_t>& buf = t_data->state->buf;
-    // fprintf(stderr, "data_incoming ptrs:  t_data %p, t_data->state %p, &buf %p, buf.data() %p\n", t_data, t_data->state, buf, buf.data());
     do {
         uint old_sz = buf.size(), toread = 256;
         buf.resize(old_sz + toread);
         int bytes = purple_ssl_read(ssl, &buf[0], toread);
         if (bytes <= 0) {
-            purple_debug_info("trillian", ("wrn: bytes recvd" + to_string(bytes) + "\n").c_str());
+            purple_debug_info("trillian", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
             if (errno == EAGAIN)
                 return;
             else {
@@ -274,7 +273,8 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
             }
         }
         if ((uint)bytes != toread) {
-            buf.resize(old_sz + bytes);
+            fprintf(stderr, "bytes %d\n", bytes);
+            buf.resize(old_sz + (uint)bytes);
             break;
         }
     } while (true);
@@ -300,9 +300,14 @@ void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInpu
     purple_debug_info("trillian", "SSL connection established\n");
     TrillianConnectionData* t_data = ((TrillianConnectionData*)data);
     t_data->state = new ConnState;
-    // fprintf(stderr, "trillian_on_tls_connect ptrs: data %p, t_data %p, t_data->state %p, &buf %p, buf.data() %p\n", data, t_data, t_data->state, t_data->state->buf, t_data->state->buf.data());
     purple_ssl_input_add(ssl, data_incoming, t_data);
-    const std::vector<uint8_t> dat = serialize(client_info);
+
+    const char* pass = purple_account_get_password(t_data->conn->account);
+    const char* name = purple_account_get_username(t_data->conn->account);
+    tlv_packet_data auth = templ_authorize;
+    auth.block[1].val = vector<uint8_t>{name, name + strlen(name)};
+    auth.block[2].val = vector<uint8_t>{pass, pass + strlen(pass)};
+    const std::vector<uint8_t> dat = serialize(auth);
     purple_ssl_write(ssl, dat.data(), dat.size());
 }
 

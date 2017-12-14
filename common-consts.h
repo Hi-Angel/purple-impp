@@ -13,9 +13,33 @@ const char DEVICE_NAME[]        = "libpurple";
 const char CLIENT_DESCRIPTION[] = "Multiprotocol messenger based on libpurple";
 
 // 14 is the version of at least 6.0.0 trillian client
-const tlv_packet_version version_request = {magic, tlv_packet_header::version, uint16bg_t{14}};
+const tlv_packet_version templ_version_request = {magic, tlv_packet_header::version, uint16bg_t{14}};
 
-const tlv_packet_data client_info = tlv_packet_data {
+const tlv_packet_data templ_authorize = tlv_packet_data {
+    head : tlv_packet_header {
+        magic   : magic,
+        channel : tlv_packet_header::tlv
+    },
+    flags    : tlv_packet_data::request,
+    family   : tlv_packet_data::stream,
+    msg_type : STREAM::AUTHENTICATE,
+    sequence : 2,
+    block  : {
+        tlv_unit {
+            type   : STREAM::MECHANISM,
+            val : { 0x00, 0x01 }
+        },
+        tlv_unit {
+            type   : STREAM::NAME,
+            val : { 0x74, 0x72, 0x69, 0x63, 0x69, 0x61 }
+        },
+        tlv_unit {
+            type   : STREAM::NAME,
+            val : { 0x70, 0x61, 0x73, 0x73, 0x77, 0x6F, 0x72, 0x64 }
+        }}
+};
+
+const tlv_packet_data templ_client_info = tlv_packet_data {
     head : tlv_packet_header {
         magic   : magic,
         channel : tlv_packet_header::tlv
@@ -23,7 +47,7 @@ const tlv_packet_data client_info = tlv_packet_data {
     flags    : tlv_packet_data::request,
     family   : tlv_packet_data::device,
     msg_type : DEVICE::BIND,
-    sequence : 1,
+    sequence : 3,
     block  : {
         tlv_unit {
             type   : DEVICE::CLIENT_NAME,

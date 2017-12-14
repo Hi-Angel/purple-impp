@@ -71,16 +71,18 @@ variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const s
 
 // Deserializes an array of tlv_units. Note: if there's a unit with not enough data,
 // it'd get ignored for now.
-vector<tlv_unit> deserialize_units(const uint8_t dat[], long int sz_dat) {
+vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
     std::vector<tlv_unit> ret;
+    long int sz_left = sz_dat;
     do {
-        variant u = deserialize<tlv_unit>(dat, sz_dat);
+        variant u = deserialize<tlv_unit>(dat, sz_left);
         if (holds_alternative<nothing>(u))
             return ret;
         ret.push_back(get<tlv_unit>(u));
-        sz_dat -= get<tlv_unit>(u).size();
+        sz_left -= get<tlv_unit>(u).size();
         dat    += get<tlv_unit>(u).size();
-    } while(sz_dat >= 0);
+        assert(sz_left >= 0); // otherwise it's buffer overflow
+    } while(sz_left >= 0);
     return ret;
 }
 

@@ -158,7 +158,7 @@ struct tlv_unit {
     bool is_val_sz32 () const { return type.get() & (1 << 15);}
 
     // Deserialized size
-    uint size() {
+    uint size() const {
         return sizeof(type) + ((is_val_sz32())? sizeof(val_sz32) + val_sz32.get()
                                : sizeof(val_sz16) + val_sz16.get());
     }
@@ -303,7 +303,7 @@ struct tlv_packet_data {
         head(h), flags(flgs), family(fam), msg_type(msg_t),
         sequence(seq), block(blck) {
         uint sz = 0;
-        for (long int i = block.size() - 1; i >= 0; --i)
+        for (uint i = 0; i < block.size(); ++i)
             sz += block[i].size();
         block_sz = {sz};
     }
@@ -340,6 +340,6 @@ std::vector<uint8_t> serialize(const uint16bg_t&);
 
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat);
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat);
-std::vector<tlv_unit> deserialize_units(const uint8_t dat[], long int sz_dat);
+std::vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat);
 
 #endif //PROTOCOL_H
