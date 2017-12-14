@@ -253,13 +253,27 @@ std::string trillian_comm_feature_set(int fd) {
 
 static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("trillian", "data_incoming called\n");
-    ConnState* info = (ConnState*) in;
-    std::vector<uint8_t>& buf = info->buf;
+    TrillianConnectionData* t_data = ((TrillianConnectionData*)in);
+    std::vector<uint8_t>& buf = t_data->state->buf;
+    // fprintf(stderr, "data_incoming ptrs:  t_data %p, t_data->state %p, &buf %p, buf.data() %p\n", t_data, t_data->state, buf, buf.data());
     do {
         uint old_sz = buf.size(), toread = 256;
         buf.resize(old_sz + toread);
-        uint bytes = purple_ssl_read(ssl, &buf[0], toread);
-        if (bytes != toread) {
+        int bytes = purple_ssl_read(ssl, &buf[0], toread);
+        if (bytes <= 0) {
+            purple_debug_info("trillian", ("wrn: bytes recvd" + to_string(bytes) + "\n").c_str());
+            if (errno == EAGAIN)
+                return;
+            else {
+                string err = (errno == 0)? "Server closed connection"
+                    : string{"Lost connection with "} + g_strerror(errno);
+                auto reason = (t_data->conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
+                    : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
+                purple_connection_error_reason(t_data->conn, reason, err.c_str());
+                return;
+            }
+        }
+        if ((uint)bytes != toread) {
             buf.resize(old_sz + bytes);
             break;
         }
@@ -275,7 +289,7 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
         buf.erase(buf.begin(), buf.begin() + sizeof(tlv_packet_version));
     } else { // tlv_packet_data
         // todo
-        print_tlv_packet_data(get<tlv_packet_data>(pckt));
+        purple_debug_info("trillian", (show_tlv_packet_data(get<tlv_packet_data>(pckt), 0) + "\n").c_str());
         buf.erase(buf.begin(), buf.begin() + get<tlv_packet_data>(pckt).curr_pckt_sz());
     }
 }
@@ -284,10 +298,10 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
 // offline messages.
 void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("trillian", "SSL connection established\n");
-    PurpleConnection *conn = (PurpleConnection*)data;
-    TrillianConnectionData *t_data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
+    TrillianConnectionData* t_data = ((TrillianConnectionData*)data);
     t_data->state = new ConnState;
-    purple_ssl_input_add(ssl, data_incoming, t_data->state);
+    // fprintf(stderr, "trillian_on_tls_connect ptrs: data %p, t_data %p, t_data->state %p, &buf %p, buf.data() %p\n", data, t_data, t_data->state, t_data->state->buf, t_data->state->buf.data());
+    purple_ssl_input_add(ssl, data_incoming, t_data);
     const std::vector<uint8_t> dat = serialize(client_info);
     purple_ssl_write(ssl, dat.data(), dat.size());
 }
@@ -444,7 +458,7 @@ static PurplePluginProtocolInfo prpl_info =
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "7trillian"
+#define DEBUGSUFFIX "9trillian"
 char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
 char PLUGIN_NAME[]     = DEBUGSUFFIX;
 char DISPLAY_VERSION[] = "1.0";

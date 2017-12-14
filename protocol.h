@@ -327,6 +327,7 @@ void print_tlv_packet_data(const tlv_packet_data& h);
 void print_tlv_packet_version(const tlv_packet_version& v);
 void print_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
+const std::string show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset);
 const std::string show_tlv_unit(const uint8_t d[], long int d_sz, uint indent_offset);
 const std::string to_hex(uint8_t* arr, uint sz_arr);
 
