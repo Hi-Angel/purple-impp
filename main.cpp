@@ -9,6 +9,9 @@
 // 7. mention in readme about the cereal const bug
 // 8. worth putting some debug prints into both tlv_unit deserialization funcs.
 // 9. whatever todos are in the code.
+// 10. pidgin keeps crashing on disconnect. Judging by stacktrace I might be
+// notifying it about broken connection wrong, e.g. maybe I don't clear something
+// which leads to pidgin's attempts to access it… Have to ask somebody, probably.
 
 #include <glib.h>
 #include <string>
@@ -264,6 +267,7 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
             if (errno == EAGAIN)
                 return;
             else {
+                // todo: this code makes pidgin to load 100% CPU, and then crash.
                 string err = (errno == 0)? "Server closed connection"
                     : string{"Lost connection with "} + g_strerror(errno);
                 auto reason = (t_data->conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
@@ -294,21 +298,25 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
     }
 }
 
-// 6. Bind a device to the stream and retrieve presence lists, group chats, and
-// offline messages.
 void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("trillian", "SSL connection established\n");
     TrillianConnectionData* t_data = ((TrillianConnectionData*)data);
     t_data->state = new ConnState;
     purple_ssl_input_add(ssl, data_incoming, t_data);
 
-    const char* pass = purple_account_get_password(t_data->conn->account);
     const char* name = purple_account_get_username(t_data->conn->account);
+    const char* pass = purple_account_get_password(t_data->conn->account);
     tlv_packet_data auth = templ_authorize;
-    auth.block[1].val = vector<uint8_t>{name, name + strlen(name)};
-    auth.block[2].val = vector<uint8_t>{pass, pass + strlen(pass)};
-    const std::vector<uint8_t> dat = serialize(auth);
-    purple_ssl_write(ssl, dat.data(), dat.size());
+    auth.block[1].set_val(vector<uint8_t>{name, name + strlen(name)});
+    auth.block[2].set_val(vector<uint8_t>{pass, pass + strlen(pass)});
+    const std::vector<uint8_t> dat_auth = serialize(auth);
+    purple_ssl_write(ssl, dat_auth.data(), dat_auth.size());
+    print_tlv_packet(dat_auth.data(), dat_auth.size());
+
+    const std::vector<uint8_t> dat_info = serialize(templ_client_info);
+    purple_ssl_write(ssl, dat_info.data(), dat_info.size());
+    print_tlv_packet(dat_info.data(), dat_info.size());
+    purple_debug_info("trillian", "sent!\n");
 }
 
 void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {

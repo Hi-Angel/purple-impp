@@ -110,7 +110,18 @@ struct tlv_unit {
         uint16bg_t val_sz16;
         uint32bg_t val_sz32;
     };
+private: // changing val requires changes to val_sz* as well, use (g)set_val()
     std::vector<uint8_t>  val;
+public:
+
+    const std::vector<uint8_t>& get_val() const { return val; }
+    void set_val(const std::vector<uint8_t> v) {
+        val = v;
+        if (is_val_sz32())
+            val_sz32 = val.size();
+        else
+            val_sz16 = val.size();
+    }
 
     // used by Cereal for (de)serialization
     template<class Archive>
@@ -315,7 +326,7 @@ struct tlv_packet_data {
 
     // *unsafe* helpers, ensure whatever you're accessing exists before calling
     uint16_t uint16_val_at(uint unit_i) const {
-        return ((uint16bg_t*)block[unit_i].val.data())->get();
+        return ((uint16bg_t*)block[unit_i].get_val().data())->get();
     }
     uint szval_at(uint unit_i) const {
         const tlv_unit& u = block[unit_i];

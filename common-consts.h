@@ -51,27 +51,27 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
     block  : {
         tlv_unit {
             type   : DEVICE::CLIENT_NAME,
-            val : { CLIENT_NAME, CLIENT_NAME + sizeof(CLIENT_NAME) }
+            val : { CLIENT_NAME, CLIENT_NAME + sizeof(CLIENT_NAME) - 1 }
         },
         tlv_unit {
             type   : DEVICE::CLIENT_PLATFORM,
-            val : { CLIENT_PLATFORM, CLIENT_PLATFORM + sizeof(CLIENT_PLATFORM) }
+            val : { CLIENT_PLATFORM, CLIENT_PLATFORM + sizeof(CLIENT_PLATFORM) - 1 }
         },
         tlv_unit {
             type   : DEVICE::CLIENT_ARCH,
-            val : { CLIENT_ARCH, CLIENT_ARCH + sizeof(CLIENT_ARCH) }
+            val : { CLIENT_ARCH, CLIENT_ARCH + sizeof(CLIENT_ARCH) - 1 }
         },
         tlv_unit {
             type   : DEVICE::CLIENT_VERSION,
-            val : { CLIENT_VERSION, CLIENT_VERSION + sizeof(CLIENT_VERSION) }
+            val : { CLIENT_VERSION, CLIENT_VERSION + sizeof(CLIENT_VERSION) - 1 }
         },
         tlv_unit {
             type   : DEVICE::CLIENT_BUILD,
-            val : { CLIENT_BUILD, CLIENT_BUILD + sizeof(CLIENT_BUILD) }
+            val : { CLIENT_BUILD, CLIENT_BUILD + sizeof(CLIENT_BUILD) - 1 }
         },
         tlv_unit {
             type   : DEVICE::DEVICE_NAME,
-            val : { DEVICE_NAME, DEVICE_NAME + sizeof(DEVICE_NAME) }
+            val : { DEVICE_NAME, DEVICE_NAME + sizeof(DEVICE_NAME) - 1 }
         },
         tlv_unit {
             type   : DEVICE::STATUS,
@@ -88,7 +88,7 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
         },
         tlv_unit {
             type   : DEVICE::CLIENT_DESCRIPTION,
-            val : { CLIENT_DESCRIPTION, CLIENT_DESCRIPTION + sizeof(CLIENT_DESCRIPTION) }
+            val : { CLIENT_DESCRIPTION, CLIENT_DESCRIPTION + sizeof(CLIENT_DESCRIPTION) - 1 }
         }}
 };
 

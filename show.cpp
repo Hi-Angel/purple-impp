@@ -114,7 +114,7 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset, tlv_p
             return "tlv_unit {"
                 + newl_indent + "type   = " + show_tlv_type(family, u.type.get())
                 + newl_indent + val_sz
-                + newl_indent + "val[] = " + to_hex(u.val.data(), u.val.size())
+                + newl_indent + "val[] = " + to_hex(u.get_val().data(), u.get_val().size())
                 + "\n" + indent_base + "}\n";
         };
     ret += unit_to_str(units[0]);
