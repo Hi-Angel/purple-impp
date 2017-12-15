@@ -15,18 +15,18 @@ using nothing = std::monostate;
 // is just an IR.
 
 template<typename T>
-stringstream class_to_ss(T& myclass) {
+const stringstream class_to_ss(const T& myclass) {
     stringstream ss(ios::binary | ios::out | ios::in);
-    cereal::BinaryOutputArchive class_to_ss = {ss};
-    class_to_ss(myclass);
+    cereal::BinaryOutputArchive to_ss = {ss};
+    to_ss(myclass);
     return ss;
 }
 
 template<typename T>
 const vector<uint8_t> serialize(const T& t) {
-    stringstream ss = class_to_ss(t);
-    return { istream_iterator<uint8_t>(ss),
-             istream_iterator<uint8_t>() };
+    const stringstream ss = class_to_ss(t);
+    const string& s = ss.str();
+    return { s.begin(), s.end() };
 }
 
 template<typename T>
