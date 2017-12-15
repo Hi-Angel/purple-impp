@@ -23,7 +23,7 @@ const tlv_packet_data templ_authorize = tlv_packet_data {
     flags    : tlv_packet_data::request,
     family   : tlv_packet_data::stream,
     msg_type : STREAM::AUTHENTICATE,
-    sequence : 2,
+    sequence : 6,
     block  : {
         tlv_unit {
             type   : STREAM::MECHANISM,
@@ -47,7 +47,7 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
     flags    : tlv_packet_data::request,
     family   : tlv_packet_data::device,
     msg_type : DEVICE::BIND,
-    sequence : 3,
+    sequence : 7,
     block  : {
         tlv_unit {
             type   : DEVICE::CLIENT_NAME,
