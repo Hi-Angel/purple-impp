@@ -171,33 +171,6 @@ pair<int,vector<tlv_unit>> recv_units(int fd, uint bytes, int msec) {
     return {1, units};
 }
 
-variant<int, tlv_packet_version, tlv_packet_data> recv_pckt(int fd, int msec) {
-    uint8_t buf[tlv_packet_data::min_data_pckt_sz];
-    int ret = try_recv(fd, buf, min_pckt_sz, msec);
-    if (ret <= 0)
-        return {ret};
-    auto maybe_min_pckt = deserialize_pckt(buf, min_pckt_sz);
-    if (holds_alternative<tlv_packet_version>(maybe_min_pckt))
-        return {get<tlv_packet_version>(maybe_min_pckt)};
-    ret = try_recv(fd, buf + min_pckt_sz, tlv_packet_data::min_data_pckt_sz - min_pckt_sz, msec);
-    if (ret <= 0)
-        return {ret};
-    if (holds_alternative<std::string>(maybe_min_pckt)) {
-        purple_debug_info("trillian", ("err:" + std::get<std::string>(maybe_min_pckt) + "\n").c_str());
-        return {-1}; //unlikely to happen anyway
-    }
-
-    // receive the units
-    tlv_packet_data& pckt = get<tlv_packet_data>(maybe_min_pckt);
-    assert(pckt.block.size() == 0);
-    pckt.block.resize(pckt.block_sz.get());
-    pair<int,vector<tlv_unit>> p = recv_units(fd, pckt.block_sz.get(), msec);
-    if (p.first <= 0)
-        return {p.first};
-    pckt.block += p.second;
-    return {pckt};
-}
-
 const std::string trillian_request_version(int fd) {
     send(fd, &templ_version_request, sizeof(templ_version_request), MSG_NOSIGNAL);
     uint8_t buf[sizeof(templ_version_request)];
@@ -240,7 +213,7 @@ std::string trillian_comm_feature_set(int fd) {
     auto reply = deserialize_pckt(buf, sizeof(buf));
     std::string err = (std::holds_alternative<std::string>(reply))? std::get<std::string>(reply)
         : (std::holds_alternative<tlv_packet_version>(reply))? "version instead of data"
-        : (std::get<tlv_packet_data>(reply).block.size() != 1)? "unexpected number of units"
+        : (std::get<tlv_packet_data>(reply).get_block().size() != 1)? "unexpected number of units"
         : (std::get<tlv_packet_data>(reply).szval_at(0) != sizeof(uint16bg_t))? "unexpected amount of data"
         : "";
     if (!err.empty()) {
@@ -307,8 +280,8 @@ void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInpu
     const char* name = purple_account_get_username(t_data->conn->account);
     const char* pass = purple_account_get_password(t_data->conn->account);
     tlv_packet_data auth = templ_authorize;
-    auth.block[1].set_val(vector<uint8_t>{name, name + strlen(name)});
-    auth.block[2].set_val(vector<uint8_t>{pass, pass + strlen(pass)});
+    auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
+    auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
     const std::vector<uint8_t> dat_auth = serialize(auth);
     purple_ssl_write(ssl, dat_auth.data(), dat_auth.size());
     print_tlv_packet(dat_auth.data(), dat_auth.size());

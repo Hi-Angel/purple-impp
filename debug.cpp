@@ -22,8 +22,8 @@ int main(int argc, char *argv[]) {
     const char* name = "myname";
     const char* pass = "mypass";
     tlv_packet_data auth = templ_authorize;
-    auth.block[1].set_val(vector<uint8_t>{name, name + strlen(name)});
-    auth.block[2].set_val(vector<uint8_t>{pass, pass + strlen(pass)});
+    auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
+    auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
     print_tlv_packet_data(auth);
     const std::vector<uint8_t> dat_auth = serialize(auth);
     print_tlv_packet(dat_auth.data(), dat_auth.size());

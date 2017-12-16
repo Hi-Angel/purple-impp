@@ -3,7 +3,6 @@
 #include <cereal/types/vector.hpp>
 #include <variant>
 #include <vector>
-#include <iterator>
 #include "protocol.h"
 
 using namespace std;

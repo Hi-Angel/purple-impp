@@ -283,7 +283,9 @@ struct tlv_packet_data {
        time.*/
     uint32bg_t sequence;
     uint32bg_t block_sz; // block size in bytes
+private: // block should not be changed directly because of block_sz
     std::vector<tlv_unit> block;
+public:
 
     // used by Cereal for (de)serialization
     template<class Archive>
@@ -332,6 +334,12 @@ struct tlv_packet_data {
         const tlv_unit& u = block[unit_i];
         return (u.is_val_sz32())? u.val_sz32.get() : u.val_sz16.get();
     }
+
+    void set_tlv_val(const uint i, const std::vector<uint8_t> new_val) {
+        block_sz = block_sz.get() + new_val.size() - block[i].get_val().size();
+        block[i].set_val(new_val);
+    }
+    const std::vector<tlv_unit>& get_block() const { return block; }
 };
 
 void print_tlv_packet_data(const tlv_packet_data& h);
