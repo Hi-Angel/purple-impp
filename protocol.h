@@ -56,7 +56,7 @@ enum MSG_TYPE: uint16_t {
 enum TLV_TYPE: uint16_t {
     ERRORCODE = 0,
     FEATURES  = 1,
-    MECHANISM = 2,
+    MECHANISM = 2, // I know only of val = MECHANISM_PASSWORD = 1
     NAME      = 3,
     TIMESTAMP = 4
 };
@@ -66,6 +66,11 @@ enum TLV_VAL: uint16_t {
     FEATURE_NONE        = 0,
     FEATURE_TLS         = 1,
     FEATURE_COMPRESSION = 2
+};
+enum ERROR: uint16_t {
+    FEATURE_INVALID        = 0x8001,
+    MECHANISM_INVALID      = 0x8002,
+    AUTHENTICATION_INVALID = 0x8003
 };
 }
 
@@ -97,6 +102,12 @@ enum TLV_TYPE: uint16_t {
     IS_STATUS_AUTOMATIC = 16,
     SERVER              = 17,
     DEVICE_TUPLE        = 18
+};
+enum ERROR: uint16_t {
+    CLIENT_INVALID         = 0x8001,
+    DEVICE_COLLISION       = 0x8002,
+    TOO_MANY_DEVICES       = 0x8003,
+    DEVICE_BOUND_ELSEWHERE = 0x8004
 };
 }
 
