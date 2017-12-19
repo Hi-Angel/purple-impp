@@ -6,7 +6,6 @@ project(
 
 SOURCES = [
   'main.cpp',
-  'tests.cpp',
   'show.cpp',
   'serialize.cpp',
   'utils.cpp'
