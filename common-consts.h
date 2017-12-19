@@ -34,7 +34,7 @@ const tlv_packet_data templ_authorize = tlv_packet_data {
             val : { 0x74, 0x72, 0x69, 0x63, 0x69, 0x61 }
         },
         tlv_unit {
-            type   : STREAM::NAME,
+            type   : STREAM::PASSWORD,
             val : { 0x70, 0x61, 0x73, 0x73, 0x77, 0x6F, 0x72, 0x64 }
         }}
 };
