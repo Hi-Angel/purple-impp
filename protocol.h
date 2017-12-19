@@ -153,14 +153,12 @@ public:
         else
             archive(val_sz16);
         unsigned val_sz = (is_val_sz32())? val_sz32.get() : val_sz16.get();
-        //todo: https://github.com/USCiLab/cereal/issues/453#issuecomment-349207696
-        //for now let's stick to half-assed check.
-        static const unsigned _500MB = 1024 * 1024 * 500;
-        if (val_sz > _500MB)
-            throw("suspiciously big msg; half-assed protection is activated!");
-        val = std::vector<uint8_t>(val_sz);
-        for(unsigned i = 0; i < val_sz; ++i)
-            archive(val[i]);
+        val.reserve(val_sz);
+        uint8_t tmp;
+        for(unsigned i = 0; i < val_sz; ++i) {
+            archive(tmp);
+            val.push_back(tmp);
+        }
     }
 
     tlv_unit(){}
