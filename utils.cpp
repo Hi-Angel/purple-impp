@@ -8,20 +8,21 @@ const char* strerror_newl(int err) {
     return (strerror(err) + std::string{"\n"}).c_str();
 }
 
-int inflate(const uint8_t* src, unsigned src_sz, uint8_t* dst, unsigned dst_sz) {
-    z_stream strm;
-
-    /* allocate inflate state */
-    strm.zalloc    = Z_NULL;
-    strm.zfree     = Z_NULL;
-    strm.opaque    = Z_NULL;
-    strm.avail_in  = src_sz;
-    strm.next_in   = (uint8_t*)src; // AFAIK the data shouldn't be touched
-    strm.avail_out = dst_sz;
-    strm.next_out  = dst;
-    int ret = inflateInit(&strm);
-    if (ret != Z_OK)
-        return ret;
+std::pair<int,z_stream> inflate(const z_stream& s, bool doInit) {
+    int ret;
+    z_stream strm = s;
+    if (doInit) {
+        strm.zalloc    = Z_NULL;
+        strm.zfree     = Z_NULL;
+        strm.opaque    = Z_NULL;
+        // strm.avail_in  = src_sz;
+        // strm.next_in   = (uint8_t*)src; // AFAIK the data shouldn't be touched
+        // strm.avail_out = dst_sz;
+        // strm.next_out  = dst;
+        ret = inflateInit(&strm);
+        if (ret != Z_OK)
+            return {ret, strm};
+    }
 
     /* decompress until deflate stream ends or EOF */
     do {
@@ -37,16 +38,43 @@ int inflate(const uint8_t* src, unsigned src_sz, uint8_t* dst, unsigned dst_sz) 
                     ret = Z_DATA_ERROR;     /* fall through */
                 case Z_DATA_ERROR:
                 case Z_MEM_ERROR:
-                case Z_BUF_ERROR: /* not enough output space. In general not fatal */
                     inflateEnd(&strm);
-                    return ret;
+                    return {ret, strm};
+                case Z_BUF_ERROR: /* not enough output space. In general not fatal */
+                    return {ret, strm};
             }
         } while (strm.avail_out == 0);
     } while (ret != Z_STREAM_END); /* done when inflate() says it's done */
 
     /* clean up and return */
     inflateEnd(&strm);
-    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+    return {ret, strm};
+}
+
+std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in) {
+    std::vector<uint8_t> out(in.size());
+    z_stream strm;
+    strm.next_in   = (uint8_t*)in.data(); // AFAIK the data shouldn't be touched
+    strm.avail_in  = in.size();
+    strm.next_out  = &out[0];
+    strm.avail_out = out.size();
+    bool doInit = true;
+    for(;;) {
+        std::pair<int,z_stream> ret = inflate(strm, doInit);
+        uint written = out.size() - ret.second.avail_out;
+        if (ret.first == Z_BUF_ERROR) {
+            strm = ret.second;
+            out.resize(out.size() + 256);
+            strm.next_out  = &out[written];
+            strm.avail_out = out.size() - written;
+            doInit = false;
+        } else if (ret.first < 0) {
+            return {ret.first, out};
+        } else {
+            out.resize(written);
+            return {ret.first, out};
+        }
+    }
 }
 
 void zerror(int zlib_ret) {

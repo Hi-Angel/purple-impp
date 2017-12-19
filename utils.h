@@ -18,6 +18,10 @@ std::vector<T> operator+=(std::vector<T>& lhs, const std::vector<T>& rhs) {
 }
 
 const char* strerror_newl(int err);
-int inflate(const uint8_t* src, unsigned src_sz, uint8_t* dst, unsigned dst_sz);
+
+// inflates data compressed with Deflate algorithm. Returns: (error,
+// uncompressed). For human-readable description of error use zerror()
+std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
+void zerror(int zlib_ret);
 
 #endif //UTILS_H

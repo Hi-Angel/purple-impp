@@ -6,6 +6,7 @@
 #include <vector>
 #include <variant>
 #include <cassert>
+#include "utils.h"
 
 //source: https://stackoverflow.com/a/4956493/2388257
 template <typename T>
@@ -184,6 +185,8 @@ public:
     }
 };
 
+std::vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat);
+
 struct tlv_packet_header {
     uint8_t magic; // should always be 0x6f
     enum : uint8_t {
@@ -306,16 +309,17 @@ public:
     template<class Archive>
     void load(Archive& archive) {
         archive(head, flags, family, msg_type, sequence, block_sz);
-        tlv_unit u;
-        for (long int sz = block_sz.get(); sz > 0;) {
-            try {archive(u);} catch(...) {
-                fputs("wrn: a tlv_unit wasn't deserialized\n", stderr);
+        std::vector<uint8_t> compressed(block_sz.get());
+        for (uint i = 0; i < block_sz.get(); ++i) {
+            try {archive(compressed[i]);} catch(...) {
+                fputs("wrn: not enough compressed data\n", stderr);
                 break;
             }
-            block.push_back(u);
-            sz -= u.size();
-            assert(sz >= 0); // otherwise we took excess bytes
         }
+        std::pair<int,std::vector<uint8_t>> pair = inflate(compressed);
+        if (pair.first < 0)
+            zerror(pair.first);
+        block = deserialize_units(pair.second.data(), pair.second.size());
     }
 
     // constructor without block_sz argument
@@ -368,6 +372,5 @@ std::vector<uint8_t> serialize(const uint16bg_t&);
 
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat);
 std::variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat);
-std::vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat);
 
 #endif //PROTOCOL_H
