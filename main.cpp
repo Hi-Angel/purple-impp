@@ -1,11 +1,7 @@
 //TODO
-// 1. clean up the structs
 // 2. rename functions, variables — many of them have "default" names due to me trying to make a
 // minimal working prototype
-// 3. split the code
-// 4. grep -rnIi matrix
 // 5. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
-// 6. rename trillian → impp in case somebody gonna write a purple web-wrapper.
 // 7. mention in readme about the cereal const bug
 // 8. worth putting some debug prints into both tlv_unit deserialization funcs.
 // 9. whatever todos are in the code.
@@ -57,9 +53,9 @@ struct ConnState {
     std::vector<uint8_t> buf;
 };
 
-struct TrillianConnectionData {
+struct IMPPConnectionData {
     PurpleConnection *conn;
-    int trillian_tcp;
+    int impp_tcp;
     const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
     const gchar *user_id;         /* our full user id ("@user:server") */
     const gchar *access_token;    /* access token corresponding to our user */
@@ -75,23 +71,23 @@ struct TrillianConnectionData {
  *
  * For now, everything just uses the 'default' icon.
  */
-static const char *trillian_list_icon(PurpleAccount *acct, PurpleBuddy *buddy)
+static const char *impp_list_icon(PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "default";
 }
 
 
-static void trillian_close(PurpleConnection *conn)
+static void impp_close(PurpleConnection *conn)
 {
-    purple_debug_info("trillian", "trillian closing connection\n");
-    TrillianConnectionData *data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
-    close(data->trillian_tcp);
+    purple_debug_info("impp", "impp closing connection\n");
+    IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
+    close(data->impp_tcp);
     free(data->state);
     // todo: tell pidgin it's over
 }
 
-static void trillian_destroy(PurplePlugin *plugin) {
-    purple_debug_info("trillian", "shutting down\n");
+static void impp_destroy(PurplePlugin *plugin) {
+    purple_debug_info("impp", "shutting down\n");
 }
 
 /**
@@ -100,9 +96,9 @@ static void trillian_destroy(PurplePlugin *plugin) {
  * (currently, we don't really implement any, but we have to return something
  * here)
  */
-static GList *trillian_status_types(PurpleAccount *acct)
+static GList *impp_status_types(PurpleAccount *acct)
 {
-    purple_debug_info("trillian", "trillian_status_types\n");
+    purple_debug_info("impp", "impp_status_types\n");
     GList *types = NULL;
     PurpleStatusType *type;
 
@@ -116,9 +112,9 @@ static GList *trillian_status_types(PurpleAccount *acct)
 }
 
 /* Make conn and data to point each to another */
-void trillian_connection_new(PurpleConnection *conn) {
+void impp_connection_new(PurpleConnection *conn) {
     g_assert(purple_connection_get_protocol_data(conn) == NULL);
-    TrillianConnectionData *data = g_new0(TrillianConnectionData, 1);
+    IMPPConnectionData *data = g_new0(IMPPConnectionData, 1);
     data->conn = conn;
     purple_connection_set_protocol_data(conn, data);
 }
@@ -173,7 +169,7 @@ pair<int,vector<tlv_unit>> recv_units(int fd, uint bytes, int msec) {
     return {1, units};
 }
 
-const std::string trillian_request_version(int fd) {
+const std::string impp_request_version(int fd) {
     send(fd, &templ_version_request, sizeof(templ_version_request), MSG_NOSIGNAL);
     uint8_t buf[sizeof(templ_version_request)];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
@@ -193,7 +189,7 @@ const std::string trillian_request_version(int fd) {
     return "";
 }
 
-std::string trillian_comm_feature_set(int fd) {
+std::string impp_comm_feature_set(int fd) {
     const tlv_unit unit = { type: STREAM::FEATURES,
                             val: serialize(uint16bg_t{STREAM::FEATURE_TLS})};
     tlv_packet_data packet = { {magic: magic, channel: tlv_packet_header::tlv},
@@ -230,15 +226,15 @@ std::string trillian_comm_feature_set(int fd) {
 }
 
 static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("trillian", "data_incoming called\n");
-    TrillianConnectionData* t_data = ((TrillianConnectionData*)in);
+    purple_debug_info("impp", "data_incoming called\n");
+    IMPPConnectionData* t_data = ((IMPPConnectionData*)in);
     std::vector<uint8_t>& buf = t_data->state->buf;
     do {
         uint old_sz = buf.size(), toread = 256;
         buf.resize(old_sz + toread);
         int bytes = purple_ssl_read(ssl, &buf[0], toread);
         if (bytes <= 0) {
-            purple_debug_info("trillian", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
+            purple_debug_info("impp", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
             if (errno == EAGAIN)
                 return;
             else {
@@ -261,21 +257,21 @@ static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCond
     variant<tlv_packet_data,tlv_packet_version,std::string> pckt = deserialize_pckt(buf.data(), buf.size());
     if (holds_alternative<string>(pckt)) {
         string err = "can't deserialize incoming pckt: " + get<string>(pckt) + "\n";
-        purple_debug_info("trillian", err.c_str());
+        purple_debug_info("impp", err.c_str());
         return; //todo: assume for now not all data came
     } else if (holds_alternative<tlv_packet_version>(pckt)) {
-        purple_debug_info("trillian", "wrn: version in the middle of a session\n");
+        purple_debug_info("impp", "wrn: version in the middle of a session\n");
         buf.erase(buf.begin(), buf.begin() + sizeof(tlv_packet_version));
     } else { // tlv_packet_data
         // todo
-        purple_debug_info("trillian", (show_tlv_packet_data(get<tlv_packet_data>(pckt), 0) + "\n").c_str());
+        purple_debug_info("impp", (show_tlv_packet_data(get<tlv_packet_data>(pckt), 0) + "\n").c_str());
         buf.erase(buf.begin(), buf.begin() + get<tlv_packet_data>(pckt).curr_pckt_sz());
     }
 }
 
-void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("trillian", "SSL connection established\n");
-    TrillianConnectionData* t_data = ((TrillianConnectionData*)data);
+void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
+    purple_debug_info("impp", "SSL connection established\n");
+    IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
     t_data->state = new ConnState;
     purple_ssl_input_add(ssl, data_incoming, t_data);
 
@@ -291,70 +287,61 @@ void trillian_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInpu
     const std::vector<uint8_t> dat_info = serialize(templ_client_info);
     purple_ssl_write(ssl, dat_info.data(), dat_info.size());
     print_tlv_packet(dat_info.data(), dat_info.size());
-    purple_debug_info("trillian", "sent!\n");
+    purple_debug_info("impp", "sent!\n");
 }
 
-void trillian_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
+void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
     std::string ret ="tcp-connection";
     if (error_message) {
         ret += error_message;
-        purple_debug_info("trillian", (ret + "\n").c_str());
+        purple_debug_info("impp", (ret + "\n").c_str());
         return;
     }
-    TrillianConnectionData* con_dat = ((TrillianConnectionData*)data);
-    con_dat->trillian_tcp = src;
-    purple_debug_info("trillian", (ret + " is in progress\n").c_str());
+    IMPPConnectionData* con_dat = ((IMPPConnectionData*)data);
+    con_dat->impp_tcp = src;
+    purple_debug_info("impp", (ret + " is in progress\n").c_str());
     // Negotiate an IMPP protocol version
-    ret = trillian_request_version(src);
+    ret = impp_request_version(src);
     if (!ret.empty()) { // todo pidgin we're quitting
-        purple_debug_info("trillian", ret.c_str());
+        purple_debug_info("impp", ret.c_str());
         return;
     }
-    ret = trillian_comm_feature_set(src);
+    ret = impp_comm_feature_set(src);
     if (!ret.empty()) { // todo pidgin we're quitting
-        purple_debug_info("trillian", ret.c_str());
+        purple_debug_info("impp", ret.c_str());
         return;
     }
-    purple_debug_info("trillian", "tcp-connection established, configuring TLS\n");
+    purple_debug_info("impp", "tcp-connection established, configuring TLS\n");
     auto ssl_err = [](PurpleSslConnection*, PurpleSslErrorType, gpointer) {
-            purple_debug_info("trillian", "TLS error\n"); //todo
+            purple_debug_info("impp", "TLS error\n"); //todo
         };
-    purple_ssl_connect_with_host_fd(con_dat->conn->account, src, trillian_on_tls_connect,
+    purple_ssl_connect_with_host_fd(con_dat->conn->account, src, impp_on_tls_connect,
                                     ssl_err,
                                     TEST_TRILLIAN_HOST, data);
 }
 
-void trillian_connection_start_login(PurpleConnection *conn) {
+void impp_connection_start_login(PurpleConnection *conn) {
     PurpleAccount *acct = conn->account;
-    TrillianConnectionData *data = (TrillianConnectionData*)purple_connection_get_protocol_data(conn);
-    // const gchar *homeserver = purple_account_get_string(conn->account,
-    //         PRPL_ACCOUNT_OPT_HOME_SERVER, DEFAULT_HOME_HOST);
-    // data->homeserver = homeserver;
-    // purple_connection_set_state(conn, PURPLE_CONNECTING); dunno what these do
-    // purple_connection_update_progress(conn, "Logging in", 0, 3);
-    // matrix_api_password_login(data, acct->username,
-    //         purple_account_get_password(acct),
-    //         purple_account_get_string(acct, "device_id", NULL),
-    //         _login_completed, data);
+    IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
     if (!purple_proxy_connect(0, acct, TEST_TRILLIAN_HOST,
-                              TEST_TRILLIAN_PORT, trillian_tcp_established_hook, data)) {
-        purple_debug_info("trillian", "purple_proxy_connect error\n");
+                              TEST_TRILLIAN_PORT, impp_tcp_established_hook, data)) {
+        purple_debug_info("impp", "purple_proxy_connect error\n");
         return; //todo: perror? and disabling the account
     }
 }
 
 /**
- * Start the connection to a trillian account
+ * Start the connection to a impp account
  */
-void trillian_login(PurpleAccount *acc)
+void impp_login(PurpleAccount *acc)
 {
-    purple_debug_info("trillian", "trillian login\n");
+    purple_debug_info("impp", "impp login\n");
     PurpleConnection *conn = purple_account_get_connection(acc);
-    trillian_connection_new(conn);
-    trillian_connection_start_login(conn);
+    impp_connection_new(conn);
+    impp_connection_start_login(conn);
 
     // purple_signal_connect(purple_conversations_get_handle(), "chat-conversation-typing",
-    //     acct, PURPLE_CALLBACK(trillianprpl_conv_send_typing), conn);
+    //     acct, PURPLE_CALLBACK(imppprpl_conv_send_typing), conn);
 
     // conn->flags |= PURPLE_CONNECTION_HTML;
 }
@@ -362,8 +349,8 @@ void trillian_login(PurpleAccount *acc)
 static PurplePluginProtocolInfo prpl_info =
 {
     OPT_PROTO_IM_IMAGE, // | OPT_PROTO_CHAT_TOPIC | OPT_PROTO_UNIQUE_CHATNAME,
-    0,               /* user_splits, initialized in trillian_init() */
-    0,               /* protocol_options, initialized in trillian_init() */
+    0,               /* user_splits, initialized in impp_init() */
+    0,               /* protocol_options, initialized in impp_init() */
     {   /* icon_spec, a PurpleBuddyIconSpec */
         Formats,                   /* format */
         0,                               /* min_width */
@@ -373,16 +360,16 @@ static PurplePluginProtocolInfo prpl_info =
         10000,                           /* max_filesize */
         PURPLE_ICON_SCALE_DISPLAY,       /* scale_rules */
     },
-    trillian_list_icon,                  /* list_icon */
+    impp_list_icon,                  /* list_icon */
     0,                                  /* list_emblem */
     0,                                  /* status_text */
     0,                                  /* tooltip_text */
-    trillian_status_types,               /* status_types */
+    impp_status_types,               /* status_types */
     0,                                  /* blist_node_menu */
-    0, //trillian_chat_info,                  /* chat_info */
-    0, //trillian_chat_info_defaults,         /* chat_info_defaults */
-    trillian_login,                      /* login */
-    trillian_close,                      /* close */
+    0, //impp_chat_info,                  /* chat_info */
+    0, //impp_chat_info_defaults,         /* chat_info_defaults */
+    impp_login,                      /* login */
+    impp_close,                      /* close */
     0,                                  /* send_im */
     0,                                  /* set_info */
     0,                                  /* send_typing */
@@ -399,13 +386,13 @@ static PurplePluginProtocolInfo prpl_info =
     0,                                  /* rem_permit */
     0,                                  /* rem_deny */
     0,                                  /* set_permit_deny */
-    0, //trillian_join_chat,                  /* join_chat */
-    0, //trillian_reject_chat,                /* reject_chat */
-    0, //trillian_get_chat_name,              /* get_chat_name */
-    0, //trillian_chat_invite,                /* chat_invite */
-    0, //trillian_chat_leave,                 /* chat_leave */
+    0, //impp_join_chat,                  /* join_chat */
+    0, //impp_reject_chat,                /* reject_chat */
+    0, //impp_get_chat_name,              /* get_chat_name */
+    0, //impp_chat_invite,                /* chat_invite */
+    0, //impp_chat_leave,                 /* chat_leave */
     0,                                  /* chat_whisper */
-    0, //trillian_chat_send,                  /* chat_send */
+    0, //impp_chat_send,                  /* chat_send */
     0,                                  /* keepalive */
     0,                                  /* register_user */
     0,                                  /* get_cb_info */
@@ -418,7 +405,7 @@ static PurplePluginProtocolInfo prpl_info =
     0,                                  /* normalize */
     0,                                  /* set_buddy_icon */
     0,                                  /* remove_group */
-    0, //trillian_get_cb_real_name,           /* get_cb_real_name */
+    0, //impp_get_cb_real_name,           /* get_cb_real_name */
     0,                                  /* set_chat_topic */
     0,                                  /* find_blist_chat */
     0,                                  /* roomlist_get_list */
@@ -446,14 +433,14 @@ static PurplePluginProtocolInfo prpl_info =
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "9trillian"
+#define DEBUGSUFFIX "9impp"
 char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
 char PLUGIN_NAME[]     = DEBUGSUFFIX;
 char DISPLAY_VERSION[] = "1.0";
-char SUMMARY[]         = "Trillian Protocol Plugin";
-char DESCRIPTION[]     = "Trillian Protocol Plugin";
+char SUMMARY[]         = "Trillian IMPP Protocol Plugin";
+char DESCRIPTION[]     = "Trillian IMPP Protocol Plugin";
 char AUTHOR[]          = "Konstantin Kharlamov <hi-angel@yandex.ru>";
-char HOMEPAGE[]        = "https://www.trillian.im/";
+char HOMEPAGE[]        = "https://www.impp.im/";
 
 static PurplePluginInfo info =
 {
@@ -474,7 +461,7 @@ static PurplePluginInfo info =
     HOMEPAGE,                /* homepage */
     0,                       /* load */
     0,                       /* unload */
-    trillian_destroy,        /* destroy */
+    impp_destroy,        /* destroy */
     0,                       /* ui_info */
     &prpl_info,              /* extra_info */
     0,                       /* prefs_info */
@@ -488,7 +475,7 @@ static PurplePluginInfo info =
 
 static void
 init_plugin(PurplePlugin *plugin) {
-    purple_debug_info("trillian", "starting up\n");
+    purple_debug_info("impp", "starting up\n");
 }
 
 PURPLE_INIT_PLUGIN(¯\_(ツ)_/¯, init_plugin, info);

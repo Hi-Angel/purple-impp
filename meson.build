@@ -1,5 +1,5 @@
 project(
-  'purple-trillian',
+  'purple-impp',
   'cpp',
   version: '0.1.0',
 )
@@ -49,13 +49,3 @@ executable(
   cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion'],
   link_args: ['-fsanitize=address']
 )
-
-# trillian_preload_lib = custom_target(
-#   'trillian_preload_lib',
-#   output: 'libtril.so',
-#   input: SOURCES + ['debug_trillian.cpp'],
-#   command : [comp, '@INPUT@', '@OUTPUT@'],
-#   dependencies: [PURPLE],
-#   install: false,
-#   cpp_args: ['-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter'],
-# )
