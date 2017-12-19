@@ -128,6 +128,29 @@ cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, tlv_pack
     return show_tlv_unit(units, indent_offset, family);
 }
 
+cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
+    switch(family.get()) {
+        case tlv_packet_data::stream: switch (msg_type){
+            case STREAM::FEATURES_SET: return "FEATURES_SET";
+            case STREAM::AUTHENTICATE: return "AUTHENTICATE";
+            case STREAM::PING: return "PING";
+            default: return std::to_string(msg_type);
+        }
+        case tlv_packet_data::device:switch (msg_type) {
+            case DEVICE::BIND: return "BIND";
+            case DEVICE::UPDATE: return "UPDATE";
+            case DEVICE::UNBIND: return "UNBIND";
+            default: return std::to_string(msg_type);
+        }
+        case tlv_packet_data::lists: // fall through
+        case tlv_packet_data::im: // fall through
+        case tlv_packet_data::presence: // fall through
+        case tlv_packet_data::avatar: // fall through
+        case tlv_packet_data::group_chats: // fall through
+        default: return std::to_string(msg_type);
+    }
+}
+
 // human-readable view of the struct *not surrounded* by whitespace
 cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
     cstr indent_base = cstr(indent_offset, ' ');
@@ -159,7 +182,7 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
         + newl_indent + "head = " + show_tlv_packet_header(packet.head, indent_offset+4)
         + newl_indent + "flags    = " + flags
         + newl_indent + "family   = " + family
-        + newl_indent + "msg_type = " + std::to_string(packet.msg_type.get())
+        + newl_indent + "msg_type = " + show_msg_type(packet.family, packet.msg_type.get())
         + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
         + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
         + newl_indent + "block[]  = " + show_tlv_unit(packet.get_block(), indent_offset+4, packet.family.get())
