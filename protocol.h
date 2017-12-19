@@ -59,7 +59,8 @@ enum TLV_TYPE: uint16_t {
     FEATURES  = 1,
     MECHANISM = 2, // I know only of val = MECHANISM_PASSWORD = 1
     NAME      = 3,
-    TIMESTAMP = 4
+    TIMESTAMP = 4,
+    PASSWORD  = 5
 };
 
 /* a tlv_unit::val, can be used with bitmask */
