@@ -1,3 +1,21 @@
+/*
+ * SkypeWeb Plugin for libpurple/Pidgin
+ * Copyright (c) 2017 Konstantin Kharlamov
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 //TODO
 // 1. rename functions, variables — many of them have "default" names due to me
 // trying to make a minimal working prototype
@@ -311,7 +329,7 @@ void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_messa
     }
     purple_debug_info("impp", "tcp-connection established, configuring TLS\n");
     auto ssl_err = [](PurpleSslConnection*, PurpleSslErrorType, gpointer) {
-            purple_debug_info("impp", "TLS error\n"); //todo
+            purple_debug_info("impp", "TLS error\n"); //todo tell exact error
         };
     purple_ssl_connect_with_host_fd(con_dat->conn->account, src, impp_on_tls_connect,
                                     ssl_err,
