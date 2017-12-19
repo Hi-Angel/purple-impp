@@ -79,7 +79,7 @@ vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
             return ret;
         ret.push_back(get<tlv_unit>(u));
         sz_left -= get<tlv_unit>(u).size();
-        dat    += get<tlv_unit>(u).size();
+        dat     += get<tlv_unit>(u).size();
         assert(sz_left >= 0); // otherwise it's buffer overflow
     } while(sz_left >= 0);
     return ret;
