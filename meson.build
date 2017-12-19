@@ -30,6 +30,15 @@ shared_library(
   cpp_args: ['-std=c++17']
 )
 
+shared_library(
+  'trillian_preload',
+  SOURCES + ['trillian_preload.cpp'],
+  dependencies: [PURPLE],
+  install: false,
+  cpp_args: ['-std=c++17'],
+  link_args: [ '-Wl,--no-as-needed', '-lssl', '-ldl' ]
+)
+
 executable(
   'a',
   SOURCES + ['debug.cpp'],
@@ -38,3 +47,13 @@ executable(
   cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion'],
   link_args: ['-fsanitize=address']
 )
+
+# trillian_preload_lib = custom_target(
+#   'trillian_preload_lib',
+#   output: 'libtril.so',
+#   input: SOURCES + ['debug_trillian.cpp'],
+#   command : [comp, '@INPUT@', '@OUTPUT@'],
+#   dependencies: [PURPLE],
+#   install: false,
+#   cpp_args: ['-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter'],
+# )
