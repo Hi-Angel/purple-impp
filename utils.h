@@ -18,5 +18,6 @@ std::vector<T> operator+=(std::vector<T>& lhs, const std::vector<T>& rhs) {
 }
 
 const char* strerror_newl(int err);
+int inflate(const uint8_t* src, unsigned src_sz, uint8_t* dst, unsigned dst_sz);
 
 #endif //UTILS_H

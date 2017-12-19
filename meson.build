@@ -20,11 +20,13 @@ add_project_arguments(
 )
 
 PURPLE = dependency('purple', version: '>=2.0.0')
+ZLIB = dependency('zlib')
+GLOBAL_DEPS = [PURPLE, ZLIB]
 
 shared_library(
   meson.project_name(),
   SOURCES,
-  dependencies: [PURPLE],
+  dependencies: GLOBAL_DEPS,
   install: true,
   install_dir: PURPLE.get_pkgconfig_variable('plugindir'),
   cpp_args: ['-std=c++17']
@@ -33,7 +35,7 @@ shared_library(
 shared_library(
   'trillian_preload',
   SOURCES + ['trillian_preload.cpp'],
-  dependencies: [PURPLE],
+  dependencies: GLOBAL_DEPS,
   install: false,
   cpp_args: ['-std=c++17'],
   link_args: [ '-Wl,--no-as-needed', '-lssl', '-ldl' ]
@@ -42,7 +44,7 @@ shared_library(
 executable(
   'a',
   SOURCES + ['debug.cpp'],
-  dependencies: [PURPLE],
+  dependencies: GLOBAL_DEPS,
   install: false,
   cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion'],
   link_args: ['-fsanitize=address']

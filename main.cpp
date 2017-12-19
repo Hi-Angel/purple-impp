@@ -1,4 +1,4 @@
-//TODO BEFORE-UPSTREAMING:
+//TODO
 // 1. clean up the structs
 // 2. rename functions, variables — many of them have "default" names due to me trying to make a
 // minimal working prototype
@@ -12,6 +12,8 @@
 // 10. pidgin keeps crashing on disconnect. Judging by stacktrace I might be
 // notifying it about broken connection wrong, e.g. maybe I don't clear something
 // which leads to pidgin's attempts to access it… Have to ask somebody, probably.
+// 11. partial deserialization is not supported. If we started deserialization before
+// all data received, depending on situation the packet partially or wholly lost.
 
 #include <glib.h>
 #include <string>
