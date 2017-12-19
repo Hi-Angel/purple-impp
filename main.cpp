@@ -1,14 +1,12 @@
 //TODO
-// 2. rename functions, variables — many of them have "default" names due to me trying to make a
-// minimal working prototype
-// 5. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
-// 7. mention in readme about the cereal const bug
-// 8. worth putting some debug prints into both tlv_unit deserialization funcs.
-// 9. whatever todos are in the code.
-// 10. pidgin keeps crashing on disconnect. Judging by stacktrace I might be
+// 1. rename functions, variables — many of them have "default" names due to me
+// trying to make a minimal working prototype
+// 2. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
+// 3. whatever todos are in the code.
+// 4. pidgin keeps crashing on disconnect. Judging by stacktrace I might be
 // notifying it about broken connection wrong, e.g. maybe I don't clear something
 // which leads to pidgin's attempts to access it… Have to ask somebody, probably.
-// 11. partial deserialization is not supported. If we started deserialization before
+// 5. partial deserialization is not supported. If we started deserialization before
 // all data received, depending on situation the packet partially or wholly lost.
 
 #include <glib.h>
