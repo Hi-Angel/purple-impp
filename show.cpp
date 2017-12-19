@@ -61,6 +61,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case STREAM::MECHANISM: return "MECHANISM";
                 case STREAM::NAME:      return "NAME";
                 case STREAM::TIMESTAMP: return "TIMESTAMP";
+                case STREAM::PASSWORD: return "PASSWORD";
                 default: break;
             }
             break;
