@@ -1,5 +1,5 @@
 /*
- * SkypeWeb Plugin for libpurple/Pidgin
+ * Trillian IMPP for libpurple/Pidgin
  * Copyright (c) 2017 Konstantin Kharlamov
  *
  * This program is free software: you can redistribute it and/or modify
