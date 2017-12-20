@@ -27,4 +27,4 @@ Q: I'm getting following a build error like this:
 	/usr/include/cereal/details/helpers.hpp:219:72: error: invalid conversion from ‘const void*’ to ‘cereal::BinaryData<const unsigned char*&>::PT {aka void*}’ [-fpermissive]
 		 BinaryData( T && d, uint64_t s ) : data(std::forward<T>(d)), size(s) {}
 
-A: this is a bug in Cereal. [I fixed it](https://github.com/USCiLab/cereal/pull/455), but if you're still getting the error, it means you don't have the fix. You can get it by simply copying from the link — it only 2 lines of code.
+A: this is a bug in Cereal. [I fixed it](https://github.com/USCiLab/cereal/pull/455), but if you're still getting the error, it means you don't have the fix. You can get it by simply copying from the link — it's only 2 lines of code.
