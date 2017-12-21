@@ -57,52 +57,53 @@ void impp_close(PurpleConnection *conn) {
 string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
     assert(pckt.get_block()[0].get_val().size() == 2);
     uint16_t err = pckt.uint16_val_at(0);
+    string err_desc = show_tlv_error(pckt.family, err);
     if (is_global_err(err))
         switch (err) {
             case GLOBAL::SUCCESS:             return "";
             case GLOBAL::SERVICE_UNAVAILABLE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             case GLOBAL::INVALID_CONNECTION:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             case GLOBAL::INVALID_STATE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_FAMILY:  return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_LENGTH:  return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_VALUE:   return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
+            case GLOBAL::INVALID_TLV_FAMILY:  return err_desc;
+            case GLOBAL::INVALID_TLV_LENGTH:  return err_desc;
+            case GLOBAL::INVALID_TLV_VALUE:   return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
         }
     switch(pckt.family.get()) {
         case tlv_packet_data::stream: switch (err){
-            case STREAM::FEATURE_INVALID:        return show_tlv_error(pckt.family, err);
-            case STREAM::MECHANISM_INVALID:      return show_tlv_error(pckt.family, err);
+            case STREAM::FEATURE_INVALID:        return err_desc;
+            case STREAM::MECHANISM_INVALID:      return err_desc;
             case STREAM::AUTHENTICATION_INVALID:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
         }
         case tlv_packet_data::device:switch (err) {
             case DEVICE::CLIENT_INVALID:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             case DEVICE::DEVICE_COLLISION:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             case DEVICE::TOO_MANY_DEVICES:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             case DEVICE::DEVICE_BOUND_ELSEWHERE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(conn, err_desc);
+                return err_desc;
         }
         case tlv_packet_data::lists:       // todo: fall through
         case tlv_packet_data::im:          // todo: fall through
@@ -110,10 +111,9 @@ string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
         case tlv_packet_data::avatar:      // todo: fall through
         case tlv_packet_data::group_chats: // todo: fall through
         default:
-            impp_close(conn);
-            return show_tlv_error(pckt.family, err);
+            impp_close(conn, err_desc);
+            return err_desc;
     }
-
 }
 
 size_t impp_send_tls(tlv_packet_data& pckt, IMPPConnectionData* impp) {
