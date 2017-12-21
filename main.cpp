@@ -204,6 +204,22 @@ std::string impp_comm_feature_set(int fd) {
     return "";
 }
 
+static void query_caps(IMPPConnectionData* impp) {
+    tlv_packet_data req = templ_basic_request;
+    req.family   = tlv_packet_data::lists;
+    req.msg_type = LISTS::GET;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::group_chats;
+    req.msg_type = GROUP_CHATS::MESSAGE_SEND;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::im;
+    req.msg_type = IM::OFFLINE_MESSAGES_GET;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::presence;
+    req.msg_type = PRESENCE::GET;
+    impp_send_tls(req, impp);
+}
+
 void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "SSL connection established\n");
     IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
@@ -218,6 +234,8 @@ void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCon
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
     impp_send_tls(auth, t_data);
     impp_send_tls(templ_client_info, t_data);
+
+    query_caps(t_data);
     purple_debug_info("impp", "impp_on_tls_connect finished\n");
 }
 

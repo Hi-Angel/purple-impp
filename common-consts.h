@@ -27,7 +27,7 @@ const char CLIENT_PLATFORM[]    = "GNU/Linux"; //todo: needs to be detected
 const char CLIENT_ARCH[]        = "x86_64"; //todo: detect
 const char CLIENT_VERSION[]     = "0.1";
 const char CLIENT_BUILD[]       = "0"; //todo: detect
-const char DEVICE_NAME[]        = "libpurple";
+const char DEVICE_NAME[]        = "libpurple"; //todo: trillian uses hostname
 const char CLIENT_DESCRIPTION[] = "Multiprotocol messenger based on libpurple";
 
 // 14 is the version of at least 6.0.0 trillian client
