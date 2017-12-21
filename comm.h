@@ -43,6 +43,7 @@ struct IMPPConnectionData {
     // todo: performance-wise std::dequeue is better, but unclear how to deal with
     // uncontiguous memory, nor a priority
     std::vector<uint8_t> recvd;
+    uint32_t next_seq;
 };
 
 bool is_global_err(uint16_t err);

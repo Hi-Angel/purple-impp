@@ -225,6 +225,7 @@ void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCon
     IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
     t_data->comm_database = new unordered_map<uint32_t, SentRecord>{};
     t_data->ssl = ssl;
+    t_data->next_seq = 100;
     purple_ssl_input_add(ssl, handle_incoming, t_data);
 
     const char* name = purple_account_get_username(t_data->conn->account);
