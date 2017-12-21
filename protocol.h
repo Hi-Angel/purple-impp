@@ -144,6 +144,119 @@ enum ERROR: uint16_t {
 };
 }
 
+namespace LISTS {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    GET                  = 0x1,
+    CONTACT_ADD          = 0x2,
+    CONTACT_REMOVE       = 0x3,
+    CONTACT_AUTH_REQUEST = 0x4,
+    CONTACT_APPROVE      = 0x5,
+    CONTACT_APPROVED     = 0x6,
+    CONTACT_DENY         = 0x7,
+    ALLOW_ADD            = 0x8,
+    ALLOW_REMOVE         = 0x9,
+    BLOCK_ADD            = 0xa,
+    BLOCK_REMOVE         = 0xb
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE       = 0,
+    FROM            = 1,
+    TO              = 2,
+    CONTACT_ADDRESS = 3,
+    PENDING_ADDRESS = 4,
+    ALLOW_ADDRESS   = 5,
+    BLOCK_ADDRESS   = 6,
+    AVATAR_SHA1     = 7,
+    NICKNAME        = 8
+};
+enum ERROR: uint16_t {
+    LIST_LIMIT_EXCEEDED    = 0x8001,
+    ADDRESS_EXISTS         = 0x8002,
+    ADDRESS_DOES_NOT_EXIST = 0x8003,
+    ADDRESS_CONFLICT       = 0x8004,
+    ADDRESS_INVALID        = 0x8005
+};
+}
+
+namespace GROUP_CHATS {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    SET           = 1,
+    GET           = 2,
+    MEMBER_ADD    = 3,
+    MEMBER_REMOVE = 4,
+    MESSAGE_SEND  = 5
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE        = 0,
+    FROM             = 1,
+    NAME             = 2,
+    MEMBER           = 3,
+    INITIAL          = 4,
+    MESSAGE          = 5,
+    TIMESTAMP        = 6,
+    GROUP_CHAT_TUPLE = 7
+};
+enum ERROR: uint16_t {
+    MEMBER_NOT_CONTACT    = 0x8001,
+    MEMBER_ALREADY_EXISTS = 0x8002
+};
+}
+
+namespace IM {
+const int CAPABILITY_IM     = 1;
+const int CAPABILITY_TYPING = 2;
+
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    OFFLINE_MESSAGES_GET    = 1,
+    OFFLINE_MESSAGES_DELETE = 2,
+    MESSAGE_SEND            = 3
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE       = 0,
+    FROM            = 1,
+    TO              = 2,
+    CAPABILITY      = 3,
+    MESSAGE_ID      = 4,
+    MESSAGE_SIZE    = 5,
+    MESSAGE_CHUNK   = 6,
+    CREATED_AT      = 7,
+    TIMESTAMP       = 8,
+    OFFLINE_MESSAGE = 9
+};
+enum ERROR: uint16_t {
+    USERNAME_BLOCKED     = 0x8001,
+    USERNAME_NOT_CONTACT = 0x8002,
+    INVALID_CAPABILITY   = 0x8003
+};
+}
+
+namespace PRESENCE {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    SET    = 1,
+    GET    = 2,
+    UPDATE = 3
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE           = 0,
+    FROM                = 1,
+    TO                  = 2,
+    STATUS              = 3,
+    STATUS_MESSAGE      = 4,
+    IS_STATUS_AUTOMATIC = 5,
+    AVATAR_SHA1         = 6,
+    NICKNAME            = 7,
+    CAPABILITIES        = 8
+};
+}
+
 struct tlv_unit {
     uint16bg_t type; // meaning of a type depends to their family
     union {

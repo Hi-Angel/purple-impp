@@ -175,11 +175,28 @@ cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
             case DEVICE::DEVICE_BOUND_ELSEWHERE: return "DEVICE_BOUND_ELSEWHERE";
             default: return err_unkn();
         }
-        case tlv_packet_data::lists: // fall through
-        case tlv_packet_data::im: // fall through
-        case tlv_packet_data::presence: // fall through
+        case tlv_packet_data::lists: switch (error) {
+            case LISTS::LIST_LIMIT_EXCEEDED:    return "LIST_LIMIT_EXCEEDED";
+            case LISTS::ADDRESS_EXISTS:         return "ADDRESS_EXISTS";
+            case LISTS::ADDRESS_DOES_NOT_EXIST: return "ADDRESS_DOES_NOT_EXIST";
+            case LISTS::ADDRESS_CONFLICT:       return "ADDRESS_CONFLICT";
+            case LISTS::ADDRESS_INVALID:        return "ADDRESS_INVALID";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::im: switch (error) {
+            case IM::USERNAME_BLOCKED:     return "USERNAME_BLOCKED";
+            case IM::USERNAME_NOT_CONTACT: return "USERNAME_NOT_CONTACT";
+            case IM::INVALID_CAPABILITY:   return "INVALID_CAPABILITY";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::presence:
+            return err_unkn(); // no known errors
+        case tlv_packet_data::group_chats: switch (error) {
+            case GROUP_CHATS::MEMBER_NOT_CONTACT:    return "MEMBER_NOT_CONTACT";
+            case GROUP_CHATS::MEMBER_ALREADY_EXISTS: return "MEMBER_ALREADY_EXISTS";
+            default: return err_unkn();
+        }
         case tlv_packet_data::avatar: // fall through
-        case tlv_packet_data::group_chats: // fall through
         default: return std::to_string(error);
     }
 }

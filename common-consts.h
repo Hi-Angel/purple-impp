@@ -110,4 +110,17 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
         }}
 };
 
+// between different requests changes family and msg_type
+const tlv_packet_data templ_basic_request = tlv_packet_data {
+    head : tlv_packet_header {
+        magic   : magic,
+        channel : tlv_packet_header::tlv
+    },
+    flags    : tlv_packet_data::request,
+    family   : tlv_packet_data::lists,
+    msg_type : LISTS::GET,
+    sequence : 8,
+    block  : {}
+};
+
 #endif //COMMON_CONSTS_H
