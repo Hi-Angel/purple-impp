@@ -24,7 +24,7 @@
 using namespace std;
 
 bool is_global_err(uint16_t err) {
-    return err & 0x8000;
+    return !(err & 0x8000);
 }
 
 void impp_close(PurpleConnection *conn, const string description) {

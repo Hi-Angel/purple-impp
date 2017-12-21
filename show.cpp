@@ -249,15 +249,15 @@ cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
 cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
     switch(family.get()) {
         case tlv_packet_data::stream: switch (msg_type){
-            case STREAM::FEATURES_SET: return "FEATURES_SET";
-            case STREAM::AUTHENTICATE: return "AUTHENTICATE";
-            case STREAM::PING: return "PING";
+            case STREAM::FEATURES_SET:        return "FEATURES_SET";
+            case STREAM::AUTHENTICATE:        return "AUTHENTICATE";
+            case STREAM::PING:                return "PING";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::device: switch (msg_type) {
-            case DEVICE::BIND: return "BIND";
-            case DEVICE::UPDATE: return "UPDATE";
-            case DEVICE::UNBIND: return "UNBIND";
+            case DEVICE::BIND:                return "BIND";
+            case DEVICE::UPDATE:              return "UPDATE";
+            case DEVICE::UNBIND:              return "UNBIND";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::lists: switch (msg_type) {
@@ -274,10 +274,27 @@ cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
             case LISTS::BLOCK_REMOVE:         return "BLOCK_REMOVE";
             default: return std::to_string(msg_type);
         }
-        case tlv_packet_data::im: // fall through
-        case tlv_packet_data::presence: // fall through
+        case tlv_packet_data::im: switch (msg_type) {
+            case IM::OFFLINE_MESSAGES_GET:    return "OFFLINE_MESSAGES_GET";
+            case IM::OFFLINE_MESSAGES_DELETE: return "OFFLINE_MESSAGES_DELETE";
+            case IM::MESSAGE_SEND:            return "MESSAGE_SEND";
+            default: return std::to_string(msg_type);
+        }
+        case tlv_packet_data::presence: switch (msg_type) {
+            case PRESENCE::SET:    return "SET";
+            case PRESENCE::GET:    return "GET";
+            case PRESENCE::UPDATE: return "UPDATE";
+            default: return std::to_string(msg_type);
+        }
         case tlv_packet_data::avatar: // fall through
-        case tlv_packet_data::group_chats: // fall through
+        case tlv_packet_data::group_chats: switch (msg_type) { // fall through
+            case GROUP_CHATS::SET:            return "SET";
+            case GROUP_CHATS::GET:            return "GET";
+            case GROUP_CHATS::MEMBER_ADD:     return "MEMBER_ADD";
+            case GROUP_CHATS::MEMBER_REMOVE:  return "MEMBER_REMOVE";
+            case GROUP_CHATS::MESSAGE_SEND:   return "MESSAGE_SEND";
+            default: return std::to_string(msg_type);
+        }
         default: return std::to_string(msg_type);
     }
 }
