@@ -30,22 +30,21 @@ bool is_global_err(uint16_t err) {
 void impp_close(PurpleConnection *conn, const string description) {
     int errno1 = errno;
     purple_debug_info("impp", "impp closing connection\n");
-    IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    if (data->comm_database) {
-        delete data->comm_database;
-        data->comm_database = 0;
+    IMPPConnectionData *impp = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
+    if (impp->comm_database) {
+        delete impp->comm_database;
+        impp->comm_database = 0;
     }
-
-    // todo: this block makes pidgin to load 100% CPU, and then crash.
     string err = (!description.empty())? description.c_str()
         : (errno1 == 0)? "Server closed connection"
         : string{"Lost connection with "} + g_strerror(errno1);
     auto reason = (conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
         : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
     purple_connection_error_reason(conn, reason, err.c_str());
-    // todo: ↑
-
-    close(data->impp_tcp); // todo: shall I? Does pidgin do the same?
+    purple_ssl_close(impp->ssl);
+    close(impp->impp_tcp); // todo: shall I? Does pidgin do the same?
+    impp->conn = 0;
+    impp->ssl = 0;
 }
 
 void impp_close(PurpleConnection *conn) {
