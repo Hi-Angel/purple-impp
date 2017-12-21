@@ -25,16 +25,16 @@
 using cstr = const std::string;
 using nothing = std::monostate;
 
-void hexdump(const char *buf, int buflen) {
-  for (int i=0; i<buflen; i+=16) {
+void hexdump(const unsigned char *buf, uint buflen) {
+  for (uint i=0; i<buflen; i+=16) {
     fprintf(stderr, "%06x: ", i);
-    for (int j=0; j<16; j++)
+    for (uint j=0; j<16; j++)
       if (i+j < buflen)
         fprintf(stderr, "%02x ", buf[i+j]);
       else
         fprintf(stderr, "   ");
     fprintf(stderr, " ");
-    for (int j=0; j<16; j++)
+    for (uint j=0; j<16; j++)
       if (i+j < buflen)
           fprintf(stderr, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
     fprintf(stderr, "\n");
@@ -53,7 +53,7 @@ cstr to_hex(const uint8_t* arr, uint sz_arr) {
     // twiddling snprintf()s with lots of offsets (the more so because snprintf() adds
     // zero bytes), I just don't consider the outcome worth that much effort.
     puts("impp: hex start");
-    hexdump((char*)arr, (int)sz_arr);
+    hexdump(arr, sz_arr);
     puts("impp: hex end");
 
     return {buf, buf+sizeof(buf)-1}; // -1 for trailing space
