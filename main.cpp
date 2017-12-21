@@ -233,7 +233,8 @@ void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCon
     auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
     impp_send_tls(auth, t_data);
-    impp_send_tls(templ_client_info, t_data);
+    tlv_packet_data client_info = templ_client_info;
+    impp_send_tls(client_info, t_data);
 
     query_caps(t_data);
     purple_debug_info("impp", "impp_on_tls_connect finished\n");

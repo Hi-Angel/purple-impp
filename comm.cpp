@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdlib>
 #include <debug.h>
 #include <unistd.h>
 #include "comm.h"
@@ -116,8 +117,12 @@ string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
 
 }
 
-size_t impp_send_tls(const tlv_packet_data& pckt, IMPPConnectionData* impp) {
+size_t impp_send_tls(tlv_packet_data& pckt, IMPPConnectionData* impp) {
     unordered_map<uint32_t,SentRecord>& db = *impp->comm_database;
+    uint32_t seed;
+    while(db.find(seed) != db.end())
+        seed = rand();
+    pckt.sequence = seed;
     const std::vector<uint8_t> dat_pckt = serialize(pckt);
     // guard database with mutices if multiple threads involved
     db[pckt.sequence.get()] = {};
