@@ -18,7 +18,6 @@
 
 // please, keep Cereal out of project headers as it noticably slows down compilation
 #include <cereal/archives/binary.hpp>
-#include <cereal/types/vector.hpp>
 #include <variant>
 #include <vector>
 #include "protocol.h"

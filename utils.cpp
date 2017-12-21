@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cstring>
 #include <zlib.h>
+#include <debug.h>
 #include "utils.h"
 
 const char* strerror_newl(int err) {
@@ -116,4 +117,8 @@ void zerror(int zlib_ret) {
         default:
             fprintf(stderr, "unknown zlib error %d\n", zlib_ret);
     }
+}
+
+void purple_debug_info(std::string s) {
+    purple_debug_info("impp", s.c_str());
 }

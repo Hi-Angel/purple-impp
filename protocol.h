@@ -19,6 +19,8 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+/* This file contains common IMPP structures and types */
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -61,6 +63,18 @@ private: // to not occasionally mess with endianess
 using uint32bg_t = big_endian<uint32_t>;
 using uint16bg_t = big_endian<uint16_t>;
 using uint = unsigned int;
+
+namespace GLOBAL {
+enum ERROR: uint16_t {
+    SUCCESS             = 0,
+    SERVICE_UNAVAILABLE = 1,
+    INVALID_CONNECTION  = 2,
+    INVALID_STATE       = 3,
+    INVALID_TLV_FAMILY  = 4,
+    INVALID_TLV_LENGTH  = 5,
+    INVALID_TLV_VALUE   = 6
+};
+}
 
 namespace STREAM {
 /* a tlv_packet msg */
@@ -352,7 +366,7 @@ public:
     static const uint min_data_pckt_sz = sizeof(tlv_packet_header) + sizeof(flags)
         + sizeof(family) + sizeof(msg_type) + sizeof(sequence) + sizeof(block_sz);
 
-    uint curr_pckt_sz() { return min_data_pckt_sz + block_sz.get(); }
+    uint curr_pckt_sz() const { return min_data_pckt_sz + block_sz.get(); }
 
     // *unsafe* helpers, ensure whatever you're accessing exists before calling
     uint16_t uint16_val_at(uint unit_i) const {
@@ -376,6 +390,7 @@ void print_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset);
 const std::string show_tlv_unit(const uint8_t d[], long int d_sz, uint indent_offset);
+const std::string show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error);
 const std::string to_hex(uint8_t* arr, uint sz_arr);
 
 // templates can't be exported, so we have to restort to ugly hacks

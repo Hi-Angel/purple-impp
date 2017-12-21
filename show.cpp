@@ -18,8 +18,9 @@
 
 #include <string>
 #include <utility>
-#include "protocol.h"
 #include <cassert>
+#include "protocol.h"
+#include "comm.h"
 
 using cstr = const std::string;
 using nothing = std::monostate;
@@ -145,6 +146,42 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset, tlv_p
 cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, tlv_packet_data::tlv_family family) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
     return show_tlv_unit(units, indent_offset, family);
+}
+
+cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
+    auto err_unkn = [&error]()->cstr { return "(ERR UNKN) " + std::to_string(error); };
+    if (is_global_err(error))
+        switch (error) {
+            case GLOBAL::SUCCESS:             return "SUCCESS";
+            case GLOBAL::SERVICE_UNAVAILABLE: return "SERVICE_UNAVAILABLE";
+            case GLOBAL::INVALID_CONNECTION:  return "INVALID_CONNECTION";
+            case GLOBAL::INVALID_STATE:       return "INVALID_STATE";
+            case GLOBAL::INVALID_TLV_FAMILY:  return "INVALID_TLV_FAMILY";
+            case GLOBAL::INVALID_TLV_LENGTH:  return "INVALID_TLV_LENGTH";
+            case GLOBAL::INVALID_TLV_VALUE:   return "INVALID_TLV_VALUE";
+            default: return err_unkn();
+        }
+    switch(family.get()) {
+        case tlv_packet_data::stream: switch (error){
+            case STREAM::FEATURE_INVALID:        return "FEATURE_INVALID";
+            case STREAM::MECHANISM_INVALID:      return "MECHANISM_INVALID";
+            case STREAM::AUTHENTICATION_INVALID: return "AUTHENTICATION_INVALID";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::device:switch (error) {
+            case DEVICE::CLIENT_INVALID:         return "CLIENT_INVALID";
+            case DEVICE::DEVICE_COLLISION:       return "DEVICE_COLLISION";
+            case DEVICE::TOO_MANY_DEVICES:       return "TOO_MANY_DEVICES";
+            case DEVICE::DEVICE_BOUND_ELSEWHERE: return "DEVICE_BOUND_ELSEWHERE";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::lists: // fall through
+        case tlv_packet_data::im: // fall through
+        case tlv_packet_data::presence: // fall through
+        case tlv_packet_data::avatar: // fall through
+        case tlv_packet_data::group_chats: // fall through
+        default: return std::to_string(error);
+    }
 }
 
 cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {

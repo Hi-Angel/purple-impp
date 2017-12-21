@@ -47,6 +47,7 @@
 #include <sslconn.h>
 #include "protocol.h"
 #include "utils.h"
+#include "comm.h"
 #include "common-consts.h"
 
 using namespace std;
@@ -60,24 +61,6 @@ const uint TEST_TRILLIAN_PORT = 3158;
 const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
 const uint min_pckt_sz = sizeof(tlv_packet_version);
 
-struct ConnState {
-    // scratch buf for input data. Performance-wise it supposed to leave allocated
-    // space untouched most of times on shrink, hence just do resize() instead of
-    // storing a uint for tracking the size.
-    // todo: performance-wise std::dequeue is better, but unclear how to deal with
-    // uncontiguous memory, nor a priority
-    std::vector<uint8_t> buf;
-};
-
-struct IMPPConnectionData {
-    PurpleConnection *conn;
-    int impp_tcp;
-    const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
-    const gchar *user_id;         /* our full user id ("@user:server") */
-    const gchar *access_token;    /* access token corresponding to our user */
-    ConnState* state;
-};
-
 /**
  * Called to get the icon name for the given buddy and account.
  *
@@ -90,16 +73,6 @@ struct IMPPConnectionData {
 static const char *impp_list_icon(PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "default";
-}
-
-
-static void impp_close(PurpleConnection *conn)
-{
-    purple_debug_info("impp", "impp closing connection\n");
-    IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    close(data->impp_tcp);
-    free(data->state);
-    // todo: tell pidgin it's over
 }
 
 static void impp_destroy(PurplePlugin *plugin) {
@@ -241,69 +214,21 @@ std::string impp_comm_feature_set(int fd) {
     return "";
 }
 
-static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("impp", "data_incoming called\n");
-    IMPPConnectionData* t_data = ((IMPPConnectionData*)in);
-    std::vector<uint8_t>& buf = t_data->state->buf;
-    do {
-        uint old_sz = buf.size(), toread = 256;
-        buf.resize(old_sz + toread);
-        int bytes = purple_ssl_read(ssl, &buf[0], toread);
-        if (bytes <= 0) {
-            purple_debug_info("impp", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
-            if (errno == EAGAIN)
-                return;
-            else {
-                // todo: this code makes pidgin to load 100% CPU, and then crash.
-                string err = (errno == 0)? "Server closed connection"
-                    : string{"Lost connection with "} + g_strerror(errno);
-                auto reason = (t_data->conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
-                    : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
-                purple_connection_error_reason(t_data->conn, reason, err.c_str());
-                return;
-            }
-        }
-        if ((uint)bytes != toread) {
-            fprintf(stderr, "bytes %d\n", bytes);
-            buf.resize(old_sz + (uint)bytes);
-            break;
-        }
-    } while (true);
-    // if deserializeble, process and clear input vector
-    variant<tlv_packet_data,tlv_packet_version,std::string> pckt = deserialize_pckt(buf.data(), buf.size());
-    if (holds_alternative<string>(pckt)) {
-        string err = "can't deserialize incoming pckt: " + get<string>(pckt) + "\n";
-        purple_debug_info("impp", err.c_str());
-        return; //todo: assume for now not all data came
-    } else if (holds_alternative<tlv_packet_version>(pckt)) {
-        purple_debug_info("impp", "wrn: version in the middle of a session\n");
-        buf.erase(buf.begin(), buf.begin() + sizeof(tlv_packet_version));
-    } else { // tlv_packet_data
-        // todo
-        purple_debug_info("impp", (show_tlv_packet_data(get<tlv_packet_data>(pckt), 0) + "\n").c_str());
-        buf.erase(buf.begin(), buf.begin() + get<tlv_packet_data>(pckt).curr_pckt_sz());
-    }
-}
-
 void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "SSL connection established\n");
     IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
-    t_data->state = new ConnState;
-    purple_ssl_input_add(ssl, data_incoming, t_data);
+    t_data->comm_database = new unordered_map<uint32_t, SentRecord>{};
+    t_data->ssl = ssl;
+    purple_ssl_input_add(ssl, handle_incoming, t_data);
 
     const char* name = purple_account_get_username(t_data->conn->account);
     const char* pass = purple_account_get_password(t_data->conn->account);
     tlv_packet_data auth = templ_authorize;
     auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
-    const std::vector<uint8_t> dat_auth = serialize(auth);
-    purple_ssl_write(ssl, dat_auth.data(), dat_auth.size());
-    print_tlv_packet(dat_auth.data(), dat_auth.size());
-
-    const std::vector<uint8_t> dat_info = serialize(templ_client_info);
-    purple_ssl_write(ssl, dat_info.data(), dat_info.size());
-    print_tlv_packet(dat_info.data(), dat_info.size());
-    purple_debug_info("impp", "sent!\n");
+    impp_send_tls(auth, t_data);
+    impp_send_tls(templ_client_info, t_data);
+    purple_debug_info("impp", "impp_on_tls_connect finished\n");
 }
 
 void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
