@@ -27,14 +27,15 @@ bool is_global_err(uint16_t err) {
     return err & 0x8000;
 }
 
-void impp_close(PurpleConnection *conn) {
+void impp_close(PurpleConnection *conn, const string description) {
     purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
     delete data->comm_database;
     data->comm_database = 0;
 
     // todo: this block makes pidgin to load 100% CPU, and then crash.
-    string err = (errno == 0)? "Server closed connection"
+    string err = (!description.empty())? description.c_str()
+        : (errno == 0)? "Server closed connection"
         : string{"Lost connection with "} + g_strerror(errno);
     auto reason = (conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
         : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
@@ -42,6 +43,10 @@ void impp_close(PurpleConnection *conn) {
     // todo: ↑
 
     close(data->impp_tcp); // todo: shall I? Does pidgin do the same?
+}
+
+void impp_close(PurpleConnection *conn) {
+    impp_close(conn, "");
 }
 
 // handles error, like figures if connection properties needs to be updated or

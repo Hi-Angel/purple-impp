@@ -22,6 +22,7 @@
 #include <memory>
 #include <unordered_map>
 #include <connection.h>
+#include <string>
 #include "protocol.h"
 
 struct SentRecord {
@@ -46,6 +47,7 @@ struct IMPPConnectionData {
 
 bool is_global_err(uint16_t err);
 void impp_close(PurpleConnection *conn);
+void impp_close(PurpleConnection *conn, const std::string reason);
 size_t impp_send_tls(const tlv_packet_data& pckt, IMPPConnectionData* impp);
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition);
 
