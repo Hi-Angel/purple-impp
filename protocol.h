@@ -19,6 +19,8 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+/* This file contains common IMPP structures and types */
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -62,6 +64,18 @@ private: // to not occasionally mess with endianess
 using uint32bg_t = big_endian<uint32_t>;
 using uint16bg_t = big_endian<uint16_t>;
 using uint = unsigned int;
+
+namespace GLOBAL {
+enum ERROR: uint16_t {
+    SUCCESS             = 0,
+    SERVICE_UNAVAILABLE = 1,
+    INVALID_CONNECTION  = 2,
+    INVALID_STATE       = 3,
+    INVALID_TLV_FAMILY  = 4,
+    INVALID_TLV_LENGTH  = 5,
+    INVALID_TLV_VALUE   = 6
+};
+}
 
 namespace STREAM {
 /* a tlv_packet msg */
@@ -128,6 +142,119 @@ enum ERROR: uint16_t {
     DEVICE_COLLISION       = 0x8002,
     TOO_MANY_DEVICES       = 0x8003,
     DEVICE_BOUND_ELSEWHERE = 0x8004
+};
+}
+
+namespace LISTS {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    GET                  = 0x1,
+    CONTACT_ADD          = 0x2,
+    CONTACT_REMOVE       = 0x3,
+    CONTACT_AUTH_REQUEST = 0x4,
+    CONTACT_APPROVE      = 0x5,
+    CONTACT_APPROVED     = 0x6,
+    CONTACT_DENY         = 0x7,
+    ALLOW_ADD            = 0x8,
+    ALLOW_REMOVE         = 0x9,
+    BLOCK_ADD            = 0xa,
+    BLOCK_REMOVE         = 0xb
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE       = 0,
+    FROM            = 1,
+    TO              = 2,
+    CONTACT_ADDRESS = 3,
+    PENDING_ADDRESS = 4,
+    ALLOW_ADDRESS   = 5,
+    BLOCK_ADDRESS   = 6,
+    AVATAR_SHA1     = 7,
+    NICKNAME        = 8
+};
+enum ERROR: uint16_t {
+    LIST_LIMIT_EXCEEDED    = 0x8001,
+    ADDRESS_EXISTS         = 0x8002,
+    ADDRESS_DOES_NOT_EXIST = 0x8003,
+    ADDRESS_CONFLICT       = 0x8004,
+    ADDRESS_INVALID        = 0x8005
+};
+}
+
+namespace GROUP_CHATS {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    SET           = 1,
+    GET           = 2,
+    MEMBER_ADD    = 3,
+    MEMBER_REMOVE = 4,
+    MESSAGE_SEND  = 5
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE        = 0,
+    FROM             = 1,
+    NAME             = 2,
+    MEMBER           = 3,
+    INITIAL          = 4,
+    MESSAGE          = 5,
+    TIMESTAMP        = 6,
+    GROUP_CHAT_TUPLE = 7
+};
+enum ERROR: uint16_t {
+    MEMBER_NOT_CONTACT    = 0x8001,
+    MEMBER_ALREADY_EXISTS = 0x8002
+};
+}
+
+namespace IM {
+const int CAPABILITY_IM     = 1;
+const int CAPABILITY_TYPING = 2;
+
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    OFFLINE_MESSAGES_GET    = 1,
+    OFFLINE_MESSAGES_DELETE = 2,
+    MESSAGE_SEND            = 3
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE       = 0,
+    FROM            = 1,
+    TO              = 2,
+    CAPABILITY      = 3,
+    MESSAGE_ID      = 4,
+    MESSAGE_SIZE    = 5,
+    MESSAGE_CHUNK   = 6,
+    CREATED_AT      = 7,
+    TIMESTAMP       = 8,
+    OFFLINE_MESSAGE = 9
+};
+enum ERROR: uint16_t {
+    USERNAME_BLOCKED     = 0x8001,
+    USERNAME_NOT_CONTACT = 0x8002,
+    INVALID_CAPABILITY   = 0x8003
+};
+}
+
+namespace PRESENCE {
+/* a tlv_packet msg_type */
+enum MSG_TYPE: uint16_t {
+    SET    = 1,
+    GET    = 2,
+    UPDATE = 3
+};
+
+enum TLV_TYPE: uint16_t {
+    ERRORCODE           = 0,
+    FROM                = 1,
+    TO                  = 2,
+    STATUS              = 3,
+    STATUS_MESSAGE      = 4,
+    IS_STATUS_AUTOMATIC = 5,
+    AVATAR_SHA1         = 6,
+    NICKNAME            = 7,
+    CAPABILITIES        = 8
 };
 }
 
@@ -356,7 +483,7 @@ public:
     static const uint min_data_pckt_sz = sizeof(tlv_packet_header) + sizeof(flags)
         + sizeof(family) + sizeof(msg_type) + sizeof(sequence) + sizeof(block_sz);
 
-    uint curr_pckt_sz() { return min_data_pckt_sz + block_sz.get(); }
+    uint curr_pckt_sz() const { return min_data_pckt_sz + block_sz.get(); }
 
     // *unsafe* helpers, ensure whatever you're accessing exists before calling
     uint16_t uint16_val_at(uint unit_i) const {
@@ -380,6 +507,7 @@ void print_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset);
 const std::string show_tlv_unit(const uint8_t d[], long int d_sz, uint indent_offset);
+const std::string show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error);
 const std::string to_hex(uint8_t* arr, uint sz_arr);
 
 // templates can't be exported, so we have to restort to ugly hacks

@@ -41,5 +41,6 @@ const char* strerror_newl(int err);
 // uncompressed). For human-readable description of error use zerror()
 std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
+void purple_debug_info(std::string s);
 
 #endif //UTILS_H

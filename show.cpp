@@ -18,22 +18,23 @@
 
 #include <string>
 #include <utility>
-#include "protocol.h"
 #include <cassert>
+#include "protocol.h"
+#include "comm.h"
 
 using cstr = const std::string;
 using nothing = std::monostate;
 
-void hexdump(const char *buf, uint buflen) {
-  for (uint i=0; i<buflen; i+=16) {
+void hexdump(const char *buf, int buflen) {
+  for (int i=0; i<buflen; i+=16) {
     fprintf(stderr, "%06x: ", i);
-    for (uint j=0; j<16; j++)
+    for (int j=0; j<16; j++)
       if (i+j < buflen)
         fprintf(stderr, "%02x ", buf[i+j]);
       else
         fprintf(stderr, "   ");
     fprintf(stderr, " ");
-    for (uint j=0; j<16; j++)
+    for (int j=0; j<16; j++)
       if (i+j < buflen)
           fprintf(stderr, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
     fprintf(stderr, "\n");
@@ -52,7 +53,7 @@ cstr to_hex(const uint8_t* arr, uint sz_arr) {
     // twiddling snprintf()s with lots of offsets (the more so because snprintf() adds
     // zero bytes), I just don't consider the outcome worth that much effort.
     puts("impp: hex start");
-    hexdump((char*)arr, sz_arr);
+    hexdump((char*)arr, (int)sz_arr);
     puts("impp: hex end");
 
     return {buf, buf+sizeof(buf)-1}; // -1 for trailing space
@@ -79,7 +80,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case STREAM::MECHANISM: return "MECHANISM";
                 case STREAM::NAME:      return "NAME";
                 case STREAM::TIMESTAMP: return "TIMESTAMP";
-                case STREAM::PASSWORD: return "PASSWORD";
+                case STREAM::PASSWORD:  return "PASSWORD";
                 default: break;
             }
             break;
@@ -108,32 +109,77 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
             }
             break;
         case tlv_packet_data::FAMILY::lists:
-            break; // todo
+            switch (type) {
+                case LISTS::ERRORCODE:       return "ERRORCODE";
+                case LISTS::FROM:            return "FROM";
+                case LISTS::TO:              return "TO";
+                case LISTS::CONTACT_ADDRESS: return "CONTACT_ADDRESS";
+                case LISTS::PENDING_ADDRESS: return "PENDING_ADDRESS";
+                case LISTS::ALLOW_ADDRESS:   return "ALLOW_ADDRESS";
+                case LISTS::BLOCK_ADDRESS:   return "BLOCK_ADDRESS";
+                case LISTS::AVATAR_SHA1:     return "AVATAR_SHA1";
+                case LISTS::NICKNAME:        return "NICKNAME";
+            }
         case tlv_packet_data::FAMILY::im:
-            break; // todo
+            switch (type) {
+                case IM::ERRORCODE:       return "ERRORCODE";
+                case IM::FROM:            return "FROM";
+                case IM::TO:              return "TO";
+                case IM::CAPABILITY:      return "CAPABILITY";
+                case IM::MESSAGE_ID:      return "MESSAGE_ID";
+                case IM::MESSAGE_SIZE:    return "MESSAGE_SIZE";
+                case IM::MESSAGE_CHUNK:   return "MESSAGE_CHUNK";
+                case IM::CREATED_AT:      return "CREATED_AT";
+                case IM::TIMESTAMP:       return "TIMESTAMP";
+                case IM::OFFLINE_MESSAGE: return "OFFLINE_MESSAGE";
+            }
         case tlv_packet_data::FAMILY::presence:
-            break; // todo
+            switch (type) {
+                case PRESENCE::ERRORCODE:           return "ERRORCODE";
+                case PRESENCE::FROM:                return "FROM";
+                case PRESENCE::TO:                  return "TO";
+                case PRESENCE::STATUS:              return "STATUS";
+                case PRESENCE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
+                case PRESENCE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
+                case PRESENCE::AVATAR_SHA1:         return "AVATAR_SHA1";
+                case PRESENCE::NICKNAME:            return "NICKNAME";
+                case PRESENCE::CAPABILITIES:        return "CAPABILITIES";
+            }
         case tlv_packet_data::FAMILY::avatar:
             break; // todo
         case tlv_packet_data::FAMILY::group_chats:
-            break; // todo
+            switch (type) {
+                case GROUP_CHATS::ERRORCODE:        return "ERRORCODE";
+                case GROUP_CHATS::FROM:             return "FROM";
+                case GROUP_CHATS::NAME:             return "NAME";
+                case GROUP_CHATS::MEMBER:           return "MEMBER";
+                case GROUP_CHATS::INITIAL:          return "INITIAL";
+                case GROUP_CHATS::MESSAGE:          return "MESSAGE";
+                case GROUP_CHATS::TIMESTAMP:        return "TIMESTAMP";
+                case GROUP_CHATS::GROUP_CHAT_TUPLE: return "GROUP_CHAT_TUPLE";
+            }
     }
     return std::to_string(type);
 }
 
-cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset, tlv_packet_data::tlv_family family) {
+cstr show_tlv_unit(const std::vector<tlv_unit>& units,
+                   uint indent_offset,
+                   const tlv_packet_data& pckt ) {
     if (units.size() == 0)
         return "";
     cstr indent_base = cstr(indent_offset, ' ');
     std::string ret;
-    auto unit_to_str = [&indent_offset, &indent_base, &family](const tlv_unit& u) {
+    auto unit_to_str = [&indent_offset, &indent_base, &pckt](const tlv_unit& u) {
+            const tlv_packet_data::tlv_family& family = pckt.family;
+            std::string val = (pckt.flags.get() == tlv_packet_data::error)? show_tlv_error(family, pckt.uint16_val_at(0))
+                : to_hex(u.get_val().data(), u.get_val().size());
             cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
             cstr val_sz = "val_sz = " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
                                         : std::to_string(u.val_sz16.get()));
             return "tlv_unit {"
                 + newl_indent + "type   = " + show_tlv_type(family, u.type.get())
                 + newl_indent + val_sz
-                + newl_indent + "val[] = " + to_hex(u.get_val().data(), u.get_val().size())
+                + newl_indent + "val[] = " + val
                 + "\n" + indent_base + "}\n";
         };
     ret += unit_to_str(units[0]);
@@ -142,30 +188,113 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units, uint indent_offset, tlv_p
     return ret;
 }
 
-cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, tlv_packet_data::tlv_family family) {
+cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data pckt) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
-    return show_tlv_unit(units, indent_offset, family);
+    return show_tlv_unit(units, indent_offset, pckt);
+}
+
+cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
+    auto err_unkn = [&error]()->cstr { return "(ERR UNKN) " + std::to_string(error); };
+    if (is_global_err(error))
+        switch (error) {
+            case GLOBAL::SUCCESS:             return "SUCCESS";
+            case GLOBAL::SERVICE_UNAVAILABLE: return "SERVICE_UNAVAILABLE";
+            case GLOBAL::INVALID_CONNECTION:  return "INVALID_CONNECTION";
+            case GLOBAL::INVALID_STATE:       return "INVALID_STATE";
+            case GLOBAL::INVALID_TLV_FAMILY:  return "INVALID_TLV_FAMILY";
+            case GLOBAL::INVALID_TLV_LENGTH:  return "INVALID_TLV_LENGTH";
+            case GLOBAL::INVALID_TLV_VALUE:   return "INVALID_TLV_VALUE";
+            default: return err_unkn();
+        }
+    switch(family.get()) {
+        case tlv_packet_data::stream: switch (error){
+            case STREAM::FEATURE_INVALID:        return "FEATURE_INVALID";
+            case STREAM::MECHANISM_INVALID:      return "MECHANISM_INVALID";
+            case STREAM::AUTHENTICATION_INVALID: return "AUTHENTICATION_INVALID";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::device:switch (error) {
+            case DEVICE::CLIENT_INVALID:         return "CLIENT_INVALID";
+            case DEVICE::DEVICE_COLLISION:       return "DEVICE_COLLISION";
+            case DEVICE::TOO_MANY_DEVICES:       return "TOO_MANY_DEVICES";
+            case DEVICE::DEVICE_BOUND_ELSEWHERE: return "DEVICE_BOUND_ELSEWHERE";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::lists: switch (error) {
+            case LISTS::LIST_LIMIT_EXCEEDED:    return "LIST_LIMIT_EXCEEDED";
+            case LISTS::ADDRESS_EXISTS:         return "ADDRESS_EXISTS";
+            case LISTS::ADDRESS_DOES_NOT_EXIST: return "ADDRESS_DOES_NOT_EXIST";
+            case LISTS::ADDRESS_CONFLICT:       return "ADDRESS_CONFLICT";
+            case LISTS::ADDRESS_INVALID:        return "ADDRESS_INVALID";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::im: switch (error) {
+            case IM::USERNAME_BLOCKED:     return "USERNAME_BLOCKED";
+            case IM::USERNAME_NOT_CONTACT: return "USERNAME_NOT_CONTACT";
+            case IM::INVALID_CAPABILITY:   return "INVALID_CAPABILITY";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::presence:
+            return err_unkn(); // no known errors
+        case tlv_packet_data::group_chats: switch (error) {
+            case GROUP_CHATS::MEMBER_NOT_CONTACT:    return "MEMBER_NOT_CONTACT";
+            case GROUP_CHATS::MEMBER_ALREADY_EXISTS: return "MEMBER_ALREADY_EXISTS";
+            default: return err_unkn();
+        }
+        case tlv_packet_data::avatar: // fall through
+        default: return std::to_string(error);
+    }
 }
 
 cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
     switch(family.get()) {
         case tlv_packet_data::stream: switch (msg_type){
-            case STREAM::FEATURES_SET: return "FEATURES_SET";
-            case STREAM::AUTHENTICATE: return "AUTHENTICATE";
-            case STREAM::PING: return "PING";
+            case STREAM::FEATURES_SET:        return "FEATURES_SET";
+            case STREAM::AUTHENTICATE:        return "AUTHENTICATE";
+            case STREAM::PING:                return "PING";
             default: return std::to_string(msg_type);
         }
-        case tlv_packet_data::device:switch (msg_type) {
-            case DEVICE::BIND: return "BIND";
-            case DEVICE::UPDATE: return "UPDATE";
-            case DEVICE::UNBIND: return "UNBIND";
+        case tlv_packet_data::device: switch (msg_type) {
+            case DEVICE::BIND:                return "BIND";
+            case DEVICE::UPDATE:              return "UPDATE";
+            case DEVICE::UNBIND:              return "UNBIND";
             default: return std::to_string(msg_type);
         }
-        case tlv_packet_data::lists: // fall through
-        case tlv_packet_data::im: // fall through
-        case tlv_packet_data::presence: // fall through
+        case tlv_packet_data::lists: switch (msg_type) {
+            case LISTS::GET:                  return "GET";
+            case LISTS::CONTACT_ADD:          return "CONTACT_ADD";
+            case LISTS::CONTACT_REMOVE:       return "CONTACT_REMOVE";
+            case LISTS::CONTACT_AUTH_REQUEST: return "CONTACT_AUTH_REQUEST";
+            case LISTS::CONTACT_APPROVE:      return "CONTACT_APPROVE";
+            case LISTS::CONTACT_APPROVED:     return "CONTACT_APPROVED";
+            case LISTS::CONTACT_DENY:         return "CONTACT_DENY";
+            case LISTS::ALLOW_ADD:            return "ALLOW_ADD";
+            case LISTS::ALLOW_REMOVE:         return "ALLOW_REMOVE";
+            case LISTS::BLOCK_ADD:            return "BLOCK_ADD";
+            case LISTS::BLOCK_REMOVE:         return "BLOCK_REMOVE";
+            default: return std::to_string(msg_type);
+        }
+        case tlv_packet_data::im: switch (msg_type) {
+            case IM::OFFLINE_MESSAGES_GET:    return "OFFLINE_MESSAGES_GET";
+            case IM::OFFLINE_MESSAGES_DELETE: return "OFFLINE_MESSAGES_DELETE";
+            case IM::MESSAGE_SEND:            return "MESSAGE_SEND";
+            default: return std::to_string(msg_type);
+        }
+        case tlv_packet_data::presence: switch (msg_type) {
+            case PRESENCE::SET:    return "SET";
+            case PRESENCE::GET:    return "GET";
+            case PRESENCE::UPDATE: return "UPDATE";
+            default: return std::to_string(msg_type);
+        }
         case tlv_packet_data::avatar: // fall through
-        case tlv_packet_data::group_chats: // fall through
+        case tlv_packet_data::group_chats: switch (msg_type) { // fall through
+            case GROUP_CHATS::SET:            return "SET";
+            case GROUP_CHATS::GET:            return "GET";
+            case GROUP_CHATS::MEMBER_ADD:     return "MEMBER_ADD";
+            case GROUP_CHATS::MEMBER_REMOVE:  return "MEMBER_REMOVE";
+            case GROUP_CHATS::MESSAGE_SEND:   return "MESSAGE_SEND";
+            default: return std::to_string(msg_type);
+        }
         default: return std::to_string(msg_type);
     }
 }
@@ -204,7 +333,7 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
         + newl_indent + "msg_type = " + show_msg_type(packet.family, packet.msg_type.get())
         + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
         + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
-        + newl_indent + "block[]  = " + show_tlv_unit(packet.get_block(), indent_offset+4, packet.family.get())
+        + newl_indent + "block[]  = " + show_tlv_unit(packet.get_block(), indent_offset+4, packet)
         + indent_base + "\n}";
 }
 

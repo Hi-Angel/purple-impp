@@ -21,11 +21,6 @@
 // trying to make a minimal working prototype
 // 2. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
 // 3. whatever todos are in the code.
-// 4. pidgin keeps crashing on disconnect. Judging by stacktrace I might be
-// notifying it about broken connection wrong, e.g. maybe I don't clear something
-// which leads to pidgin's attempts to access it… Have to ask somebody, probably.
-// 5. partial deserialization is not supported. If we started deserialization before
-// all data received, depending on situation the packet partially or wholly lost.
 
 #include <glib.h>
 #include <string>
@@ -47,6 +42,7 @@
 #include <sslconn.h>
 #include "protocol.h"
 #include "utils.h"
+#include "comm.h"
 #include "common-consts.h"
 
 using namespace std;
@@ -60,24 +56,6 @@ const uint TEST_TRILLIAN_PORT = 3158;
 const char PRPL_ACCOUNT_OPT_HOME_SERVER[] = "home_server";
 const uint min_pckt_sz = sizeof(tlv_packet_version);
 
-struct ConnState {
-    // scratch buf for input data. Performance-wise it supposed to leave allocated
-    // space untouched most of times on shrink, hence just do resize() instead of
-    // storing a uint for tracking the size.
-    // todo: performance-wise std::dequeue is better, but unclear how to deal with
-    // uncontiguous memory, nor a priority
-    std::vector<uint8_t> buf;
-};
-
-struct IMPPConnectionData {
-    PurpleConnection *conn;
-    int impp_tcp;
-    const gchar *homeserver;      /* URL of the homeserver. Always ends in '/' */
-    const gchar *user_id;         /* our full user id ("@user:server") */
-    const gchar *access_token;    /* access token corresponding to our user */
-    ConnState* state;
-};
-
 /**
  * Called to get the icon name for the given buddy and account.
  *
@@ -90,16 +68,6 @@ struct IMPPConnectionData {
 static const char *impp_list_icon(PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "default";
-}
-
-
-static void impp_close(PurpleConnection *conn)
-{
-    purple_debug_info("impp", "impp closing connection\n");
-    IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    close(data->impp_tcp);
-    free(data->state);
-    // todo: tell pidgin it's over
 }
 
 static void impp_destroy(PurplePlugin *plugin) {
@@ -190,10 +158,8 @@ const std::string impp_request_version(int fd) {
     uint8_t buf[sizeof(templ_version_request)];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
-            // todo: tell pidgin we're quitting
             return strerror_newl(errno);
         case 0:
-            // todo: tell pidgin we're quitting
             return "version_request timed out\n";
         default:
             break;
@@ -216,10 +182,8 @@ std::string impp_comm_feature_set(int fd) {
     uint8_t buf[dat.size()];
     switch(try_recv(fd, buf, sizeof(buf), 30000)) {
         case -1:
-            // todo: tell pidgin we're quitting
             return strerror_newl(errno);
         case 0:
-            // todo: tell pidgin we're quitting
             return "feature_set timed out\n";
         default:
             break;
@@ -231,7 +195,6 @@ std::string impp_comm_feature_set(int fd) {
         : (std::get<tlv_packet_data>(reply).szval_at(0) != sizeof(uint16bg_t))? "unexpected amount of data"
         : "";
     if (!err.empty()) {
-        //todo pidgin we're quitting
         return err + "\n";
     }
     if (std::get<tlv_packet_data>(reply).uint16_val_at(0) != STREAM::FEATURE_TLS) {
@@ -241,69 +204,41 @@ std::string impp_comm_feature_set(int fd) {
     return "";
 }
 
-static void data_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("impp", "data_incoming called\n");
-    IMPPConnectionData* t_data = ((IMPPConnectionData*)in);
-    std::vector<uint8_t>& buf = t_data->state->buf;
-    do {
-        uint old_sz = buf.size(), toread = 256;
-        buf.resize(old_sz + toread);
-        int bytes = purple_ssl_read(ssl, &buf[0], toread);
-        if (bytes <= 0) {
-            purple_debug_info("impp", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
-            if (errno == EAGAIN)
-                return;
-            else {
-                // todo: this code makes pidgin to load 100% CPU, and then crash.
-                string err = (errno == 0)? "Server closed connection"
-                    : string{"Lost connection with "} + g_strerror(errno);
-                auto reason = (t_data->conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
-                    : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
-                purple_connection_error_reason(t_data->conn, reason, err.c_str());
-                return;
-            }
-        }
-        if ((uint)bytes != toread) {
-            fprintf(stderr, "bytes %d\n", bytes);
-            buf.resize(old_sz + (uint)bytes);
-            break;
-        }
-    } while (true);
-    // if deserializeble, process and clear input vector
-    variant<tlv_packet_data,tlv_packet_version,std::string> pckt = deserialize_pckt(buf.data(), buf.size());
-    if (holds_alternative<string>(pckt)) {
-        string err = "can't deserialize incoming pckt: " + get<string>(pckt) + "\n";
-        purple_debug_info("impp", err.c_str());
-        return; //todo: assume for now not all data came
-    } else if (holds_alternative<tlv_packet_version>(pckt)) {
-        purple_debug_info("impp", "wrn: version in the middle of a session\n");
-        buf.erase(buf.begin(), buf.begin() + sizeof(tlv_packet_version));
-    } else { // tlv_packet_data
-        // todo
-        purple_debug_info("impp", (show_tlv_packet_data(get<tlv_packet_data>(pckt), 0) + "\n").c_str());
-        buf.erase(buf.begin(), buf.begin() + get<tlv_packet_data>(pckt).curr_pckt_sz());
-    }
+static void query_caps(IMPPConnectionData* impp) {
+    tlv_packet_data req = templ_basic_request;
+    req.family   = tlv_packet_data::lists;
+    req.msg_type = LISTS::GET;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::group_chats;
+    req.msg_type = GROUP_CHATS::MESSAGE_SEND;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::im;
+    req.msg_type = IM::OFFLINE_MESSAGES_GET;
+    impp_send_tls(req, impp);
+    req.family   = tlv_packet_data::presence;
+    req.msg_type = PRESENCE::GET;
+    impp_send_tls(req, impp);
 }
 
 void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "SSL connection established\n");
     IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
-    t_data->state = new ConnState;
-    purple_ssl_input_add(ssl, data_incoming, t_data);
+    t_data->comm_database = new unordered_map<uint32_t, SentRecord>{};
+    t_data->ssl = ssl;
+    t_data->next_seq = 100;
+    purple_ssl_input_add(ssl, handle_incoming, t_data);
 
     const char* name = purple_account_get_username(t_data->conn->account);
     const char* pass = purple_account_get_password(t_data->conn->account);
     tlv_packet_data auth = templ_authorize;
     auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
-    const std::vector<uint8_t> dat_auth = serialize(auth);
-    purple_ssl_write(ssl, dat_auth.data(), dat_auth.size());
-    print_tlv_packet(dat_auth.data(), dat_auth.size());
+    impp_send_tls(auth, t_data);
+    tlv_packet_data client_info = templ_client_info;
+    impp_send_tls(client_info, t_data);
 
-    const std::vector<uint8_t> dat_info = serialize(templ_client_info);
-    purple_ssl_write(ssl, dat_info.data(), dat_info.size());
-    print_tlv_packet(dat_info.data(), dat_info.size());
-    purple_debug_info("impp", "sent!\n");
+    query_caps(t_data);
+    purple_debug_info("impp", "impp_on_tls_connect finished\n");
 }
 
 void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
@@ -318,12 +253,14 @@ void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_messa
     purple_debug_info("impp", (ret + " is in progress\n").c_str());
     // Negotiate an IMPP protocol version
     ret = impp_request_version(src);
-    if (!ret.empty()) { // todo pidgin we're quitting
+    if (!ret.empty()) {
         purple_debug_info("impp", ret.c_str());
+        impp_close(con_dat->conn, ret);
         return;
     }
     ret = impp_comm_feature_set(src);
-    if (!ret.empty()) { // todo pidgin we're quitting
+    if (!ret.empty()) {
+        impp_close(con_dat->conn, ret);
         purple_debug_info("impp", ret.c_str());
         return;
     }
@@ -342,7 +279,8 @@ void impp_connection_start_login(PurpleConnection *conn) {
     if (!purple_proxy_connect(0, acct, TEST_TRILLIAN_HOST,
                               TEST_TRILLIAN_PORT, impp_tcp_established_hook, data)) {
         purple_debug_info("impp", "purple_proxy_connect error\n");
-        return; //todo: perror? and disabling the account
+        impp_close(conn, "purple_proxy_connect error\n");
+        return; //todo: perror?
     }
 }
 
@@ -376,76 +314,76 @@ static PurplePluginProtocolInfo prpl_info =
         10000,                           /* max_filesize */
         PURPLE_ICON_SCALE_DISPLAY,       /* scale_rules */
     },
-    impp_list_icon,                  /* list_icon */
-    0,                                  /* list_emblem */
-    0,                                  /* status_text */
-    0,                                  /* tooltip_text */
-    impp_status_types,               /* status_types */
-    0,                                  /* blist_node_menu */
-    0, //impp_chat_info,                  /* chat_info */
-    0, //impp_chat_info_defaults,         /* chat_info_defaults */
-    impp_login,                      /* login */
-    impp_close,                      /* close */
-    0,                                  /* send_im */
-    0,                                  /* set_info */
-    0,                                  /* send_typing */
-    0,                                  /* get_info */
-    0,                                  /* set_status */
-    0,                                  /* set_idle */
-    0,                                  /* change_passwd */
-    0,                                  /* add_buddy */
-    0,                                  /* add_buddies */
-    0,                                  /* remove_buddy */
-    0,                                  /* remove_buddies */
-    0,                                  /* add_permit */
-    0,                                  /* add_deny */
-    0,                                  /* rem_permit */
-    0,                                  /* rem_deny */
-    0,                                  /* set_permit_deny */
-    0, //impp_join_chat,                  /* join_chat */
-    0, //impp_reject_chat,                /* reject_chat */
-    0, //impp_get_chat_name,              /* get_chat_name */
-    0, //impp_chat_invite,                /* chat_invite */
-    0, //impp_chat_leave,                 /* chat_leave */
-    0,                                  /* chat_whisper */
-    0, //impp_chat_send,                  /* chat_send */
-    0,                                  /* keepalive */
-    0,                                  /* register_user */
-    0,                                  /* get_cb_info */
-    0,                                  /* get_cb_away */
-    0,                                  /* alias_buddy */
-    0,                                  /* group_buddy */
-    0,                                  /* rename_group */
-    0,                                  /* buddy_free */
-    0,                                  /* convo_closed */
-    0,                                  /* normalize */
-    0,                                  /* set_buddy_icon */
-    0,                                  /* remove_group */
-    0, //impp_get_cb_real_name,           /* get_cb_real_name */
-    0,                                  /* set_chat_topic */
-    0,                                  /* find_blist_chat */
-    0,                                  /* roomlist_get_list */
-    0,                                  /* roomlist_cancel */
-    0,                                  /* roomlist_expand_category */
-    0,                                  /* can_receive_file */
-    0,                                  /* send_file */
-    0,                                  /* new_xfer */
-    0,                                  /* offline_message */
-    0,                                  /* whiteboard_prpl_ops */
-    0,                                  /* send_raw */
-    0,                                  /* roomlist_room_serialize */
-    0,                                  /* unregister_user */
-    0,                                  /* send_attention */
-    0,                                  /* get_attention_types */
-    sizeof(PurplePluginProtocolInfo),      /* struct_size */
-    0,                                  /* get_account_text_table */
-    0,                                  /* initiate_media */
-    0,                                  /* get_media_caps */
-    0,                                  /* get_moods */
-    0,                                  /* set_public_alias */
-    0,                                  /* get_public_alias */
-    0,                                  /* add_buddy_with_invite */
-    0                                   /* add_buddies_with_invite */
+    impp_list_icon,                   /* list_icon */
+    0,                                /* list_emblem */
+    0,                                /* status_text */
+    0,                                /* tooltip_text */
+    impp_status_types,                /* status_types */
+    0,                                /* blist_node_menu */
+    0, //impp_chat_info,              /* chat_info */
+    0, //impp_chat_info_defaults,     /* chat_info_defaults */
+    impp_login,                       /* login */
+    impp_close,                       /* close */
+    0,                                /* send_im */
+    0,                                /* set_info */
+    0,                                /* send_typing */
+    0,                                /* get_info */
+    0,                                /* set_status */
+    0,                                /* set_idle */
+    0,                                /* change_passwd */
+    0,                                /* add_buddy */
+    0,                                /* add_buddies */
+    0,                                /* remove_buddy */
+    0,                                /* remove_buddies */
+    0,                                /* add_permit */
+    0,                                /* add_deny */
+    0,                                /* rem_permit */
+    0,                                /* rem_deny */
+    0,                                /* set_permit_deny */
+    0, //impp_join_chat,              /* join_chat */
+    0, //impp_reject_chat,            /* reject_chat */
+    0, //impp_get_chat_name,          /* get_chat_name */
+    0, //impp_chat_invite,            /* chat_invite */
+    0, //impp_chat_leave,             /* chat_leave */
+    0,                                /* chat_whisper */
+    0, //impp_chat_send,              /* chat_send */
+    0,                                /* keepalive */
+    0,                                /* register_user */
+    0,                                /* get_cb_info */
+    0,                                /* get_cb_away */
+    0,                                /* alias_buddy */
+    0,                                /* group_buddy */
+    0,                                /* rename_group */
+    0,                                /* buddy_free */
+    0,                                /* convo_closed */
+    0,                                /* normalize */
+    0,                                /* set_buddy_icon */
+    0,                                /* remove_group */
+    0, //impp_get_cb_real_name,       /* get_cb_real_name */
+    0,                                /* set_chat_topic */
+    0,                                /* find_blist_chat */
+    0,                                /* roomlist_get_list */
+    0,                                /* roomlist_cancel */
+    0,                                /* roomlist_expand_category */
+    0,                                /* can_receive_file */
+    0,                                /* send_file */
+    0,                                /* new_xfer */
+    0,                                /* offline_message */
+    0,                                /* whiteboard_prpl_ops */
+    0,                                /* send_raw */
+    0,                                /* roomlist_room_serialize */
+    0,                                /* unregister_user */
+    0,                                /* send_attention */
+    0,                                /* get_attention_types */
+    sizeof(PurplePluginProtocolInfo), /* struct_size */
+    0,                                /* get_account_text_table */
+    0,                                /* initiate_media */
+    0,                                /* get_media_caps */
+    0,                                /* get_moods */
+    0,                                /* set_public_alias */
+    0,                                /* get_public_alias */
+    0,                                /* add_buddy_with_invite */
+    0                                 /* add_buddies_with_invite */
 };
 
 // struct PurplePluginInfo requires these declarations not to be const

@@ -27,7 +27,7 @@ const char CLIENT_PLATFORM[]    = "GNU/Linux"; //todo: needs to be detected
 const char CLIENT_ARCH[]        = "x86_64"; //todo: detect
 const char CLIENT_VERSION[]     = "0.1";
 const char CLIENT_BUILD[]       = "0"; //todo: detect
-const char DEVICE_NAME[]        = "libpurple";
+const char DEVICE_NAME[]        = "libpurple"; //todo: trillian uses hostname
 const char CLIENT_DESCRIPTION[] = "Multiprotocol messenger based on libpurple";
 
 // 14 is the version of at least 6.0.0 trillian client
@@ -108,6 +108,19 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
             type   : DEVICE::CLIENT_DESCRIPTION,
             val : { CLIENT_DESCRIPTION, CLIENT_DESCRIPTION + sizeof(CLIENT_DESCRIPTION) - 1 }
         }}
+};
+
+// between different requests changes family and msg_type
+const tlv_packet_data templ_basic_request = tlv_packet_data {
+    head : tlv_packet_header {
+        magic   : magic,
+        channel : tlv_packet_header::tlv
+    },
+    flags    : tlv_packet_data::request,
+    family   : tlv_packet_data::lists,
+    msg_type : LISTS::GET,
+    sequence : 8,
+    block  : {}
 };
 
 #endif //COMMON_CONSTS_H
