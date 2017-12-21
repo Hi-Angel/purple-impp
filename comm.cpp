@@ -28,15 +28,18 @@ bool is_global_err(uint16_t err) {
 }
 
 void impp_close(PurpleConnection *conn, const string description) {
+    int errno1 = errno;
     purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *data = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    delete data->comm_database;
-    data->comm_database = 0;
+    if (data->comm_database) {
+        delete data->comm_database;
+        data->comm_database = 0;
+    }
 
     // todo: this block makes pidgin to load 100% CPU, and then crash.
     string err = (!description.empty())? description.c_str()
-        : (errno == 0)? "Server closed connection"
-        : string{"Lost connection with "} + g_strerror(errno);
+        : (errno1 == 0)? "Server closed connection"
+        : string{"Lost connection with "} + g_strerror(errno1);
     auto reason = (conn->wants_to_die)? PURPLE_CONNECTION_ERROR_OTHER_ERROR
         : PURPLE_CONNECTION_ERROR_NETWORK_ERROR;
     purple_connection_error_reason(conn, reason, err.c_str());
@@ -134,9 +137,10 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
         buf.resize(old_sz + toread);
         int bytes = purple_ssl_read(ssl, &buf[0], toread);
         if (bytes <= 0) {
+            int errno1 = errno;
             buf.resize(old_sz);
             purple_debug_info("impp", ("wrn: bytes recvd " + to_string(bytes) + "\n").c_str());
-            if (errno == EAGAIN)
+            if (errno1 == EAGAIN)
                 return;
             else {
                 impp_close(impp->conn);
