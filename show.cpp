@@ -53,7 +53,7 @@ cstr to_hex(const uint8_t* arr, uint sz_arr) {
     // twiddling snprintf()s with lots of offsets (the more so because snprintf() adds
     // zero bytes), I just don't consider the outcome worth that much effort.
     puts("impp: hex start");
-    hexdump((char*)arr, sz_arr);
+    hexdump((char*)arr, (int)sz_arr);
     puts("impp: hex end");
 
     return {buf, buf+sizeof(buf)-1}; // -1 for trailing space
@@ -254,13 +254,26 @@ cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
             case STREAM::PING: return "PING";
             default: return std::to_string(msg_type);
         }
-        case tlv_packet_data::device:switch (msg_type) {
+        case tlv_packet_data::device: switch (msg_type) {
             case DEVICE::BIND: return "BIND";
             case DEVICE::UPDATE: return "UPDATE";
             case DEVICE::UNBIND: return "UNBIND";
             default: return std::to_string(msg_type);
         }
-        case tlv_packet_data::lists: // fall through
+        case tlv_packet_data::lists: switch (msg_type) {
+            case LISTS::GET:                  return "GET";
+            case LISTS::CONTACT_ADD:          return "CONTACT_ADD";
+            case LISTS::CONTACT_REMOVE:       return "CONTACT_REMOVE";
+            case LISTS::CONTACT_AUTH_REQUEST: return "CONTACT_AUTH_REQUEST";
+            case LISTS::CONTACT_APPROVE:      return "CONTACT_APPROVE";
+            case LISTS::CONTACT_APPROVED:     return "CONTACT_APPROVED";
+            case LISTS::CONTACT_DENY:         return "CONTACT_DENY";
+            case LISTS::ALLOW_ADD:            return "ALLOW_ADD";
+            case LISTS::ALLOW_REMOVE:         return "ALLOW_REMOVE";
+            case LISTS::BLOCK_ADD:            return "BLOCK_ADD";
+            case LISTS::BLOCK_REMOVE:         return "BLOCK_REMOVE";
+            default: return std::to_string(msg_type);
+        }
         case tlv_packet_data::im: // fall through
         case tlv_packet_data::presence: // fall through
         case tlv_packet_data::avatar: // fall through
