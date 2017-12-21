@@ -25,16 +25,16 @@
 using cstr = const std::string;
 using nothing = std::monostate;
 
-void hexdump(const char *buf, uint buflen) {
-  for (uint i=0; i<buflen; i+=16) {
+void hexdump(const char *buf, int buflen) {
+  for (int i=0; i<buflen; i+=16) {
     fprintf(stderr, "%06x: ", i);
-    for (uint j=0; j<16; j++)
+    for (int j=0; j<16; j++)
       if (i+j < buflen)
         fprintf(stderr, "%02x ", buf[i+j]);
       else
         fprintf(stderr, "   ");
     fprintf(stderr, " ");
-    for (uint j=0; j<16; j++)
+    for (int j=0; j<16; j++)
       if (i+j < buflen)
           fprintf(stderr, "%c", isprint(buf[i+j]) ? buf[i+j] : '.');
     fprintf(stderr, "\n");
