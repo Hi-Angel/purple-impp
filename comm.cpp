@@ -18,6 +18,7 @@
 
 #include <debug.h>
 #include <unistd.h>
+#include <numeric>
 #include "comm.h"
 #include "utils.h"
 
@@ -31,7 +32,7 @@ void impp_close(PurpleConnection *conn, const string description) {
     int errno1 = errno;
     purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *impp = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    impp->comm_database.clear();
+    impp->ack_waiting.clear();
     impp->recvd.clear();
     impp->send_queue.clear();
     string err = (!description.empty())? description.c_str()
@@ -117,17 +118,22 @@ string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
 
 // enqueues and sends packets
 size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp) {
-    if (!impp.comm_database.empty()) {
+    if (impp.ack_waiting.empty()) {
         if (in || !impp.send_queue.empty()) {
             // todo: guard the data with mutices if multiple threads involved
             tlv_packet_data pckt = (in)? *in : pop_front(impp.send_queue);
             pckt.sequence = impp.next_seq++;
             const std::vector<uint8_t> dat_pckt = serialize(pckt);
-            impp.comm_database[pckt.sequence.get()] = {};
+            impp.ack_waiting[pckt.sequence.get()] = {};
             return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
         }
     } else {
-        purple_debug_info("queue_next: some packets still unanswered\n");
+        purple_debug_info("queue_next: packets №"
+                          + accumulate(impp.ack_waiting.begin(),
+                                       impp.ack_waiting.end(),
+                                       string{""},
+                                       [](string acc, auto i) { return acc + to_string(i.first); })
+                          + " still unanswered\n");
         if (in)
             impp.send_queue.push_back(*in);
     }
@@ -184,7 +190,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             purple_debug_info("impp", "wrn: request from a server, what could that be?\n");
             return;
         case tlv_packet_data::response:
-            if (!impp.comm_database.erase(pckt.sequence.get()))
+            if (!impp.ack_waiting.erase(pckt.sequence.get()))
                 purple_debug_info("impp", "wrn: response to a packet we never sent\n");
             else
                 impp_send_tls(0, impp);

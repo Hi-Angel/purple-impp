@@ -35,7 +35,7 @@ struct IMPPConnectionData {
     int impp_tcp;
 
     // key = sequence number
-    std::unordered_map<uint32_t, SentRecord> comm_database;
+    std::unordered_map<uint32_t, SentRecord> ack_waiting;
     PurpleSslConnection *ssl;
 
     // scratch buf for input data. Performance-wise it supposed to leave allocated
