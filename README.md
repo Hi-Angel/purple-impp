@@ -1,4 +1,4 @@
-This is a very early prototype of trillian IMPP plugin for pidgin. Only athentification works ATM.
+This is a very early prototype of trillian IMPP plugin for pidgin. Only athentification works ATM, and compilation tested only on GNU/Linux.
 
 # Building'n'installing
 
@@ -10,7 +10,7 @@ Dependencies: libpurple, zlib, [cereal](https://github.com/USCiLab/cereal).
 
 # FAQ:
 
-Q: I'm getting following a build error like this:
+Q: I'm getting a build error like this:
 
 
 	FAILED: a@exe/serialize.cpp.o 
