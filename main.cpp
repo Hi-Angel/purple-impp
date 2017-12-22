@@ -98,7 +98,7 @@ static GList *impp_status_types(PurpleAccount *acct)
 /* Make conn and data to point each to another */
 void impp_connection_new(PurpleConnection *conn) {
     g_assert(purple_connection_get_protocol_data(conn) == NULL);
-    IMPPConnectionData *data = g_new0(IMPPConnectionData, 1);
+    IMPPConnectionData *data = new IMPPConnectionData;
     data->conn = conn;
     purple_connection_set_protocol_data(conn, data);
 }
@@ -204,38 +204,37 @@ std::string impp_comm_feature_set(int fd) {
     return "";
 }
 
-static void query_caps(IMPPConnectionData* impp) {
+static void query_caps(IMPPConnectionData& impp) {
     tlv_packet_data req = templ_basic_request;
     req.family   = tlv_packet_data::lists;
     req.msg_type = LISTS::GET;
-    impp_send_tls(req, impp);
+    impp_send_tls(&req, impp);
     req.family   = tlv_packet_data::group_chats;
     req.msg_type = GROUP_CHATS::MESSAGE_SEND;
-    impp_send_tls(req, impp);
+    impp_send_tls(&req, impp);
     req.family   = tlv_packet_data::im;
     req.msg_type = IM::OFFLINE_MESSAGES_GET;
-    impp_send_tls(req, impp);
+    impp_send_tls(&req, impp);
     req.family   = tlv_packet_data::presence;
     req.msg_type = PRESENCE::GET;
-    impp_send_tls(req, impp);
+    impp_send_tls(&req, impp);
 }
 
 void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "SSL connection established\n");
-    IMPPConnectionData* t_data = ((IMPPConnectionData*)data);
-    t_data->comm_database = new unordered_map<uint32_t, SentRecord>{};
-    t_data->ssl = ssl;
-    t_data->next_seq = 100;
-    purple_ssl_input_add(ssl, handle_incoming, t_data);
+    IMPPConnectionData& t_data = *((IMPPConnectionData*)data);
+    t_data.ssl = ssl;
+    t_data.next_seq = 100;
+    purple_ssl_input_add(ssl, handle_incoming, &t_data);
 
-    const char* name = purple_account_get_username(t_data->conn->account);
-    const char* pass = purple_account_get_password(t_data->conn->account);
+    const char* name = purple_account_get_username(t_data.conn->account);
+    const char* pass = purple_account_get_password(t_data.conn->account);
     tlv_packet_data auth = templ_authorize;
     auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
-    impp_send_tls(auth, t_data);
+    impp_send_tls(&auth, t_data);
     tlv_packet_data client_info = templ_client_info;
-    impp_send_tls(client_info, t_data);
+    impp_send_tls(&client_info, t_data);
 
     query_caps(t_data);
     purple_debug_info("impp", "impp_on_tls_connect finished\n");
@@ -287,8 +286,7 @@ void impp_connection_start_login(PurpleConnection *conn) {
 /**
  * Start the connection to a impp account
  */
-void impp_login(PurpleAccount *acc)
-{
+void impp_login(PurpleAccount *acc) {
     purple_debug_info("impp", "impp login\n");
     PurpleConnection *conn = purple_account_get_connection(acc);
     impp_connection_new(conn);

@@ -43,4 +43,11 @@ std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
 void purple_debug_info(std::string s);
 
+template<typename T>
+typename T::value_type pop_front(T& container) {
+    typename T::value_type t = std::move(container.front());
+    container.pop_front();
+    return std::move(t);
+}
+
 #endif //UTILS_H

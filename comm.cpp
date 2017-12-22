@@ -31,10 +31,9 @@ void impp_close(PurpleConnection *conn, const string description) {
     int errno1 = errno;
     purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *impp = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    if (impp->comm_database) {
-        delete impp->comm_database;
-        impp->comm_database = 0;
-    }
+    impp->comm_database.clear();
+    impp->recvd.clear();
+    impp->send_queue.clear();
     string err = (!description.empty())? description.c_str()
         : (errno1 == 0)? "Server closed connection"
         : string{"Lost connection with "} + g_strerror(errno1);
@@ -116,22 +115,31 @@ string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
     }
 }
 
-size_t impp_send_tls(tlv_packet_data& pckt, IMPPConnectionData* impp) {
-    unordered_map<uint32_t,SentRecord>& db = *impp->comm_database;
-    pckt.sequence = impp->next_seq++;
-    const std::vector<uint8_t> dat_pckt = serialize(pckt);
-    // guard database with mutices if multiple threads involved
-    db[pckt.sequence.get()] = {};
-    return purple_ssl_write(impp->ssl, dat_pckt.data(), dat_pckt.size());
+// enqueues and sends packets
+size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp) {
+    if (!impp.comm_database.empty()) {
+        if (in || !impp.send_queue.empty()) {
+            // todo: guard the data with mutices if multiple threads involved
+            tlv_packet_data pckt = (in)? *in : pop_front(impp.send_queue);
+            pckt.sequence = impp.next_seq++;
+            const std::vector<uint8_t> dat_pckt = serialize(pckt);
+            impp.comm_database[pckt.sequence.get()] = {};
+            return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
+        }
+    } else {
+        purple_debug_info("queue_next: some packets still unanswered\n");
+        if (in)
+            impp.send_queue.push_back(*in);
+    }
+    return 0;
 }
 
 // lack of the counterpart to impp_send_tls is because making it a separate function
 // results in too much boilerplate
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "handle_incoming called\n");
-    IMPPConnectionData* impp = ((IMPPConnectionData*)in);
-    unordered_map<uint32_t,SentRecord>& db = *impp->comm_database;
-    std::vector<uint8_t>& buf = impp->recvd;
+    IMPPConnectionData& impp = *((IMPPConnectionData*)in);
+    std::vector<uint8_t>& buf = impp.recvd;
     do {
         const uint old_sz = buf.size(), toread = 1024;
         buf.resize(old_sz + toread);
@@ -143,7 +151,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             if (errno1 == EAGAIN)
                 return;
             else {
-                impp_close(impp->conn);
+                impp_close(impp.conn);
                 return;
             }
         }
@@ -176,14 +184,16 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             purple_debug_info("impp", "wrn: request from a server, what could that be?\n");
             return;
         case tlv_packet_data::response:
-            if (!db.erase(pckt.sequence.get()))
+            if (!impp.comm_database.erase(pckt.sequence.get()))
                 purple_debug_info("impp", "wrn: response to a packet we never sent\n");
+            else
+                impp_send_tls(0, impp);
             return;
         case tlv_packet_data::indication:
             purple_debug_info("impp", "todo: indication\n");
             return;
         case tlv_packet_data::error: {
-            string err = handle_error(pckt, impp->conn);
+            string err = handle_error(pckt, impp.conn);
             if (!err.empty())
                 purple_debug_info("error " + err);
             return;
