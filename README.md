@@ -1,4 +1,4 @@
-This is a very early prototype of trillian IMPP plugin for pidgin. Only athentification works ATM, and compilation tested only on GNU/Linux.
+This is an early prototype of trillian IMPP plugin for pidgin. Only athentification works ATM, and compilation tested only on GNU/Linux.
 
 # Building'n'installing
 
