@@ -21,6 +21,7 @@
 #include <numeric>
 #include "comm.h"
 #include "utils.h"
+#include "common-consts.h"
 
 using namespace std;
 
@@ -217,4 +218,16 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             purple_debug_info("impp", "wrn: extension request from a server, what could that be?\n");
             return;
     }
+}
+
+// send user msg
+size_t impp_send_msg(IMPPConnectionData& impp, const string& msg, const string& to) {
+    #define tlv_type_at(i) templ_user_msg.get_block()[i].type.get()
+    assert(tlv_type_at(0)    == IM::FROM && tlv_type_at(1) == IM::TO
+           && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::MESSAGE_SIZE
+           && tlv_type_at(4) == IM::MESSAGE_CHUNK && tlv_type_at(5) == IM::CAPABILITY
+           && tlv_type_at(6) == IM::CREATED_AT);
+    tlv_packet_data pckt = templ_user_msg;
+    const string wrap_pre = "<HTML><BODY BGCOLOR=\"#ffffff\"><font lang=\"EN\">",
+        wrap_post = "</BODY></HTML>";
 }
