@@ -22,6 +22,7 @@ add_project_arguments(
 PURPLE = dependency('purple', version: '>=2.0.0')
 ZLIB = dependency('zlib')
 GLOBAL_DEPS = [PURPLE, ZLIB]
+DEBUG_CPP_FLAGS = ['-O0', '-g3', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum']
 
 shared_library(
   meson.project_name(),
@@ -29,7 +30,7 @@ shared_library(
   dependencies: GLOBAL_DEPS,
   install: true,
   install_dir: PURPLE.get_pkgconfig_variable('plugindir'),
-  cpp_args: ['-std=c++17']
+  cpp_args: DEBUG_CPP_FLAGS
 )
 
 shared_library(
@@ -37,7 +38,7 @@ shared_library(
   SOURCES + ['trillian_preload.cpp'],
   dependencies: GLOBAL_DEPS,
   install: false,
-  cpp_args: ['-std=c++17'],
+  cpp_args: DEBUG_CPP_FLAGS,
   link_args: [ '-Wl,--no-as-needed', '-lssl', '-ldl' ]
 )
 
@@ -46,6 +47,6 @@ executable(
   SOURCES + ['debug.cpp'],
   dependencies: GLOBAL_DEPS,
   install: false,
-  cpp_args: ['-O0', '-g3', '-fsanitize=address', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion'],
+  cpp_args: DEBUG_CPP_FLAGS + ['-fsanitize=address'],
   link_args: ['-fsanitize=address']
 )

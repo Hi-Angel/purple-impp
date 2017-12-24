@@ -119,6 +119,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case LISTS::BLOCK_ADDRESS:   return "BLOCK_ADDRESS";
                 case LISTS::AVATAR_SHA1:     return "AVATAR_SHA1";
                 case LISTS::NICKNAME:        return "NICKNAME";
+                default: break;
             }
         case tlv_packet_data::FAMILY::im:
             switch (type) {
@@ -132,6 +133,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case IM::CREATED_AT:      return "CREATED_AT";
                 case IM::TIMESTAMP:       return "TIMESTAMP";
                 case IM::OFFLINE_MESSAGE: return "OFFLINE_MESSAGE";
+                default: break;
             }
         case tlv_packet_data::FAMILY::presence:
             switch (type) {
@@ -144,6 +146,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case PRESENCE::AVATAR_SHA1:         return "AVATAR_SHA1";
                 case PRESENCE::NICKNAME:            return "NICKNAME";
                 case PRESENCE::CAPABILITIES:        return "CAPABILITIES";
+                default: break;
             }
         case tlv_packet_data::FAMILY::avatar:
             break; // todo
@@ -157,7 +160,10 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case GROUP_CHATS::MESSAGE:          return "MESSAGE";
                 case GROUP_CHATS::TIMESTAMP:        return "TIMESTAMP";
                 case GROUP_CHATS::GROUP_CHAT_TUPLE: return "GROUP_CHAT_TUPLE";
+                default: break;
             }
+        default:
+            return std::to_string(type);
     }
     return std::to_string(type);
 }
