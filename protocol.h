@@ -300,6 +300,7 @@ public:
             archive(val_sz16);
         unsigned val_sz = (is_val_sz32())? val_sz32.get() : val_sz16.get();
         val.reserve(val_sz);
+        val.clear(); // make sure it's empty in case the object is second-hand
         uint8_t tmp;
         for(unsigned i = 0; i < val_sz; ++i) {
             archive(tmp);
