@@ -66,97 +66,97 @@ cstr show_tlv_packet_header(const tlv_packet_header& h, uint indent_offset){
         : std::to_string(h.channel);
     cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
     return "tlv_packet_header {"
-        + newl_indent + "magic   = " + std::to_string(h.magic)
-        + newl_indent + "channel = " + chan
-        + "\n" + indent_base + "}";
+        + newl_indent + "magic   : " + std::to_string(h.magic) + ","
+        + newl_indent + "channel : " + chan
+        + "\n" + indent_base + "},";
 }
 
 cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
     switch (family.get()) {
         case tlv_packet_data::FAMILY::stream:
             switch (type) {
-                case STREAM::ERRORCODE: return "ERRORCODE";
-                case STREAM::FEATURES:  return "FEATURES";
-                case STREAM::MECHANISM: return "MECHANISM";
-                case STREAM::NAME:      return "NAME";
-                case STREAM::TIMESTAMP: return "TIMESTAMP";
-                case STREAM::PASSWORD:  return "PASSWORD";
+				case STREAM::ERRORCODE: return "STREAM::ERRORCODE,";
+                case STREAM::FEATURES:  return "STREAM::FEATURES,";
+                case STREAM::MECHANISM: return "STREAM::MECHANISM,";
+                case STREAM::NAME:      return "STREAM::NAME,";
+                case STREAM::TIMESTAMP: return "STREAM::TIMESTAMP,";
+                case STREAM::PASSWORD:  return "STREAM::PASSWORD,";
                 default: break;
             }
             break;
         case tlv_packet_data::FAMILY::device:
             switch (type) {
-                case DEVICE::ERRORCODE:           return "ERRORCODE";
-                case DEVICE::CLIENT_NAME:         return "CLIENT_NAME";
-                case DEVICE::CLIENT_PLATFORM:     return "CLIENT_PLATFORM";
-                case DEVICE::CLIENT_MODEL:        return "CLIENT_MODEL";
-                case DEVICE::CLIENT_ARCH:         return "CLIENT_ARCH";
-                case DEVICE::CLIENT_VERSION:      return "CLIENT_VERSION";
-                case DEVICE::CLIENT_BUILD:        return "CLIENT_BUILD";
-                case DEVICE::CLIENT_DESCRIPTION:  return "CLIENT_DESCRIPTION";
-                case DEVICE::DEVICE_NAME:         return "DEVICE_NAME";
-                case DEVICE::IP_ADDRESS:          return "IP_ADDRESS";
-                case DEVICE::CONNECTED_AT:        return "CONNECTED_AT";
-                case DEVICE::STATUS:              return "STATUS";
-                case DEVICE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
-                case DEVICE::CAPABILITIES:        return "CAPABILITIES";
-                case DEVICE::IS_IDLE:             return "IS_IDLE";
-                case DEVICE::IS_MOBILE:           return "IS_MOBILE";
-                case DEVICE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
-                case DEVICE::SERVER:              return "SERVER";
-                case DEVICE::DEVICE_TUPLE:        return "DEVICE_TUPLE";
+				case DEVICE::ERRORCODE:           return "DEVICE::ERRORCODE,";
+                case DEVICE::CLIENT_NAME:         return "DEVICE::CLIENT_NAME,";
+                case DEVICE::CLIENT_PLATFORM:     return "DEVICE::CLIENT_PLATFORM,";
+                case DEVICE::CLIENT_MODEL:        return "DEVICE::CLIENT_MODEL,";
+                case DEVICE::CLIENT_ARCH:         return "DEVICE::CLIENT_ARCH,";
+                case DEVICE::CLIENT_VERSION:      return "DEVICE::CLIENT_VERSION,";
+                case DEVICE::CLIENT_BUILD:        return "DEVICE::CLIENT_BUILD,";
+                case DEVICE::CLIENT_DESCRIPTION:  return "DEVICE::CLIENT_DESCRIPTION,";
+                case DEVICE::DEVICE_NAME:         return "DEVICE::DEVICE_NAME,";
+                case DEVICE::IP_ADDRESS:          return "DEVICE::IP_ADDRESS,";
+                case DEVICE::CONNECTED_AT:        return "DEVICE::CONNECTED_AT,";
+                case DEVICE::STATUS:              return "DEVICE::STATUS,";
+                case DEVICE::STATUS_MESSAGE:      return "DEVICE::STATUS_MESSAGE,";
+                case DEVICE::CAPABILITIES:        return "DEVICE::CAPABILITIES,";
+                case DEVICE::IS_IDLE:             return "DEVICE::IS_IDLE,";
+                case DEVICE::IS_MOBILE:           return "DEVICE::IS_MOBILE,";
+                case DEVICE::IS_STATUS_AUTOMATIC: return "DEVICE::IS_STATUS_AUTOMATIC,";
+                case DEVICE::SERVER:              return "DEVICE::SERVER,";
+                case DEVICE::DEVICE_TUPLE:        return "DEVICE::DEVICE_TUPLE,";
                 default: break;
             }
             break;
         case tlv_packet_data::FAMILY::lists:
             switch (type) {
-                case LISTS::ERRORCODE:       return "ERRORCODE";
-                case LISTS::FROM:            return "FROM";
-                case LISTS::TO:              return "TO";
-                case LISTS::CONTACT_ADDRESS: return "CONTACT_ADDRESS";
-                case LISTS::PENDING_ADDRESS: return "PENDING_ADDRESS";
-                case LISTS::ALLOW_ADDRESS:   return "ALLOW_ADDRESS";
-                case LISTS::BLOCK_ADDRESS:   return "BLOCK_ADDRESS";
-                case LISTS::AVATAR_SHA1:     return "AVATAR_SHA1";
-                case LISTS::NICKNAME:        return "NICKNAME";
+                case LISTS::ERRORCODE:       return "LISTS::ERRORCODE,";
+                case LISTS::FROM:            return "LISTS::FROM,";
+                case LISTS::TO:              return "LISTS::TO,";
+                case LISTS::CONTACT_ADDRESS: return "LISTS::CONTACT_ADDRESS,";
+                case LISTS::PENDING_ADDRESS: return "LISTS::PENDING_ADDRESS,";
+                case LISTS::ALLOW_ADDRESS:   return "LISTS::ALLOW_ADDRESS,";
+                case LISTS::BLOCK_ADDRESS:   return "LISTS::BLOCK_ADDRESS,";
+                case LISTS::AVATAR_SHA1:     return "LISTS::AVATAR_SHA1,";
+                case LISTS::NICKNAME:        return "LISTS::NICKNAME,";
             }
         case tlv_packet_data::FAMILY::im:
             switch (type) {
-                case IM::ERRORCODE:       return "ERRORCODE";
-                case IM::FROM:            return "FROM";
-                case IM::TO:              return "TO";
-                case IM::CAPABILITY:      return "CAPABILITY";
-                case IM::MESSAGE_ID:      return "MESSAGE_ID";
-                case IM::MESSAGE_SIZE:    return "MESSAGE_SIZE";
-                case IM::MESSAGE_CHUNK:   return "MESSAGE_CHUNK";
-                case IM::CREATED_AT:      return "CREATED_AT";
-                case IM::TIMESTAMP:       return "TIMESTAMP";
-                case IM::OFFLINE_MESSAGE: return "OFFLINE_MESSAGE";
+                case IM::ERRORCODE:       return "IM::ERRORCODE,";
+                case IM::FROM:            return "IM::FROM,";
+                case IM::TO:              return "IM::TO,";
+                case IM::CAPABILITY:      return "IM::CAPABILITY,";
+                case IM::MESSAGE_ID:      return "IM::MESSAGE_ID,";
+                case IM::MESSAGE_SIZE:    return "IM::MESSAGE_SIZE,";
+                case IM::MESSAGE_CHUNK:   return "IM::MESSAGE_CHUNK,";
+                case IM::CREATED_AT:      return "IM::CREATED_AT,";
+                case IM::TIMESTAMP:       return "IM::TIMESTAMP,";
+                case IM::OFFLINE_MESSAGE: return "IM::OFFLINE_MESSAGE,";
             }
         case tlv_packet_data::FAMILY::presence:
             switch (type) {
-                case PRESENCE::ERRORCODE:           return "ERRORCODE";
-                case PRESENCE::FROM:                return "FROM";
-                case PRESENCE::TO:                  return "TO";
-                case PRESENCE::STATUS:              return "STATUS";
-                case PRESENCE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
-                case PRESENCE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
-                case PRESENCE::AVATAR_SHA1:         return "AVATAR_SHA1";
-                case PRESENCE::NICKNAME:            return "NICKNAME";
-                case PRESENCE::CAPABILITIES:        return "CAPABILITIES";
+                case PRESENCE::ERRORCODE:           return "PRESENCE::ERRORCODE,";
+                case PRESENCE::FROM:                return "PRESENCE::FROM,";
+                case PRESENCE::TO:                  return "PRESENCE::TO,";
+                case PRESENCE::STATUS:              return "PRESENCE::STATUS,";
+                case PRESENCE::STATUS_MESSAGE:      return "PRESENCE::STATUS_MESSAGE,";
+                case PRESENCE::IS_STATUS_AUTOMATIC: return "PRESENCE::IS_STATUS_AUTOMATIC,";
+                case PRESENCE::AVATAR_SHA1:         return "PRESENCE::AVATAR_SHA1,";
+                case PRESENCE::NICKNAME:            return "PRESENCE::NICKNAME,";
+                case PRESENCE::CAPABILITIES:        return "PRESENCE::CAPABILITIES,";
             }
         case tlv_packet_data::FAMILY::avatar:
             break; // todo
         case tlv_packet_data::FAMILY::group_chats:
             switch (type) {
-                case GROUP_CHATS::ERRORCODE:        return "ERRORCODE";
-                case GROUP_CHATS::FROM:             return "FROM";
-                case GROUP_CHATS::NAME:             return "NAME";
-                case GROUP_CHATS::MEMBER:           return "MEMBER";
-                case GROUP_CHATS::INITIAL:          return "INITIAL";
-                case GROUP_CHATS::MESSAGE:          return "MESSAGE";
-                case GROUP_CHATS::TIMESTAMP:        return "TIMESTAMP";
-                case GROUP_CHATS::GROUP_CHAT_TUPLE: return "GROUP_CHAT_TUPLE";
+                case GROUP_CHATS::ERRORCODE:        return "GROUP_CHATS::ERRORCODE,";
+                case GROUP_CHATS::FROM:             return "GROUP_CHATS::FROM,";
+                case GROUP_CHATS::NAME:             return "GROUP_CHATS::NAME,";
+                case GROUP_CHATS::MEMBER:           return "GROUP_CHATS::MEMBER,";
+                case GROUP_CHATS::INITIAL:          return "GROUP_CHATS::INITIAL,";
+                case GROUP_CHATS::MESSAGE:          return "GROUP_CHATS::MESSAGE,";
+                case GROUP_CHATS::TIMESTAMP:        return "GROUP_CHATS::TIMESTAMP,";
+                case GROUP_CHATS::GROUP_CHAT_TUPLE: return "GROUP_CHATS::GROUP_CHAT_TUPLE,";
             }
     }
     return std::to_string(type);
@@ -174,13 +174,12 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units,
             std::string val = (pckt.flags.get() == tlv_packet_data::error)? show_tlv_error(family, pckt.uint16_val_at(0))
                 : to_hex(u.get_val().data(), u.get_val().size());
             cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
-            cstr val_sz = "val_sz = " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
+            cstr val_sz = "val_sz : " + ((u.is_val_sz32())? std::to_string(u.val_sz32.get())
                                         : std::to_string(u.val_sz16.get()));
             return "tlv_unit {"
-                + newl_indent + "type   = " + show_tlv_type(family, u.type.get())
-                + newl_indent + val_sz
-                + newl_indent + "val[] = " + val
-                + "\n" + indent_base + "}\n";
+                + newl_indent + "type   : " + show_tlv_type(family, u.type.get())
+                + newl_indent + "val : " + to_hex(u.get_val().data(), u.get_val().size())
+                + "\n" + indent_base + "},\n";
         };
     ret += unit_to_str(units[0]);
     for (uint i = 1; i < units.size(); ++i)
@@ -249,50 +248,50 @@ cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
 cstr show_msg_type(tlv_packet_data::tlv_family family, uint16_t msg_type) {
     switch(family.get()) {
         case tlv_packet_data::stream: switch (msg_type){
-            case STREAM::FEATURES_SET:        return "FEATURES_SET";
-            case STREAM::AUTHENTICATE:        return "AUTHENTICATE";
-            case STREAM::PING:                return "PING";
+            case STREAM::FEATURES_SET:        return "STREAM::FEATURES_SET,";
+            case STREAM::AUTHENTICATE:        return "STREAM::AUTHENTICATE,";
+            case STREAM::PING:                return "STREAM::PING,";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::device: switch (msg_type) {
-            case DEVICE::BIND:                return "BIND";
-            case DEVICE::UPDATE:              return "UPDATE";
-            case DEVICE::UNBIND:              return "UNBIND";
+            case DEVICE::BIND:                return "DEVICE::BIND,";
+            case DEVICE::UPDATE:              return "DEVICE::UPDATE,";
+            case DEVICE::UNBIND:              return "DEVICE::UNBIND,";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::lists: switch (msg_type) {
-            case LISTS::GET:                  return "GET";
-            case LISTS::CONTACT_ADD:          return "CONTACT_ADD";
-            case LISTS::CONTACT_REMOVE:       return "CONTACT_REMOVE";
-            case LISTS::CONTACT_AUTH_REQUEST: return "CONTACT_AUTH_REQUEST";
-            case LISTS::CONTACT_APPROVE:      return "CONTACT_APPROVE";
-            case LISTS::CONTACT_APPROVED:     return "CONTACT_APPROVED";
-            case LISTS::CONTACT_DENY:         return "CONTACT_DENY";
-            case LISTS::ALLOW_ADD:            return "ALLOW_ADD";
-            case LISTS::ALLOW_REMOVE:         return "ALLOW_REMOVE";
-            case LISTS::BLOCK_ADD:            return "BLOCK_ADD";
-            case LISTS::BLOCK_REMOVE:         return "BLOCK_REMOVE";
+            case LISTS::GET:                  return "LISTS::GET,";
+            case LISTS::CONTACT_ADD:          return "LISTS::CONTACT_ADD,";
+            case LISTS::CONTACT_REMOVE:       return "LISTS::CONTACT_REMOVE,";
+            case LISTS::CONTACT_AUTH_REQUEST: return "LISTS::CONTACT_AUTH_REQUEST,";
+            case LISTS::CONTACT_APPROVE:      return "LISTS::CONTACT_APPROVE,";
+            case LISTS::CONTACT_APPROVED:     return "LISTS::CONTACT_APPROVED,";
+            case LISTS::CONTACT_DENY:         return "LISTS::CONTACT_DENY,";
+            case LISTS::ALLOW_ADD:            return "LISTS::ALLOW_ADD,";
+            case LISTS::ALLOW_REMOVE:         return "LISTS::ALLOW_REMOVE,";
+            case LISTS::BLOCK_ADD:            return "LISTS::BLOCK_ADD,";
+            case LISTS::BLOCK_REMOVE:         return "LISTS::BLOCK_REMOVE,";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::im: switch (msg_type) {
-            case IM::OFFLINE_MESSAGES_GET:    return "OFFLINE_MESSAGES_GET";
-            case IM::OFFLINE_MESSAGES_DELETE: return "OFFLINE_MESSAGES_DELETE";
-            case IM::MESSAGE_SEND:            return "MESSAGE_SEND";
+            case IM::OFFLINE_MESSAGES_GET:    return "IM::OFFLINE_MESSAGES_GET,";
+            case IM::OFFLINE_MESSAGES_DELETE: return "IM::OFFLINE_MESSAGES_DELETE,";
+            case IM::MESSAGE_SEND:            return "IM::MESSAGE_SEND,";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::presence: switch (msg_type) {
-            case PRESENCE::SET:    return "SET";
-            case PRESENCE::GET:    return "GET";
-            case PRESENCE::UPDATE: return "UPDATE";
+            case PRESENCE::SET:    return "PRESENCE::SET,";
+            case PRESENCE::GET:    return "PRESENCE::GET,";
+            case PRESENCE::UPDATE: return "PRESENCE::UPDATE,";
             default: return std::to_string(msg_type);
         }
         case tlv_packet_data::avatar: // fall through
         case tlv_packet_data::group_chats: switch (msg_type) { // fall through
-            case GROUP_CHATS::SET:            return "SET";
-            case GROUP_CHATS::GET:            return "GET";
-            case GROUP_CHATS::MEMBER_ADD:     return "MEMBER_ADD";
-            case GROUP_CHATS::MEMBER_REMOVE:  return "MEMBER_REMOVE";
-            case GROUP_CHATS::MESSAGE_SEND:   return "MESSAGE_SEND";
+            case GROUP_CHATS::SET:            return "GROUP_CHATS::SET,";
+            case GROUP_CHATS::GET:            return "GROUP_CHATS::GET,";
+            case GROUP_CHATS::MEMBER_ADD:     return "GROUP_CHATS::MEMBER_ADD,";
+            case GROUP_CHATS::MEMBER_REMOVE:  return "GROUP_CHATS::MEMBER_REMOVE,";
+            case GROUP_CHATS::MESSAGE_SEND:   return "GROUP_CHATS::MESSAGE_SEND,";
             default: return std::to_string(msg_type);
         }
         default: return std::to_string(msg_type);
@@ -305,35 +304,34 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
     cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
     cstr flags = [packet]() -> cstr { // not yet clear if flags disjoint or not
             switch(packet.flags.get()) {
-                case tlv_packet_data::request:    return cstr("request");
-                case tlv_packet_data::response:   return cstr("response");
-                case tlv_packet_data::indication: return cstr("indication");
-                case tlv_packet_data::error:      return cstr("error");
-                case tlv_packet_data::extension:  return cstr("extension");
-                default: return "(unkn) " + std::to_string(packet.flags.get());
+                case tlv_packet_data::request:    return cstr("tlv_packet_data::request,");
+                case tlv_packet_data::response:   return cstr("tlv_packet_data::response,");
+                case tlv_packet_data::indication: return cstr("tlv_packet_data::indication,");
+                case tlv_packet_data::error:      return cstr("tlv_packet_data::error,");
+                case tlv_packet_data::extension:  return cstr("tlv_packet_data::extension,");
+                default: return "(unkn) ," + std::to_string(packet.flags.get());
             }
         }();
     cstr family = [packet]() -> cstr {
             switch(packet.family.get()) {
-                case tlv_packet_data::stream:      return cstr("stream");
-                case tlv_packet_data::device:      return cstr("device");
-                case tlv_packet_data::lists:       return cstr("lists");
-                case tlv_packet_data::im:          return cstr("im");
-                case tlv_packet_data::presence:    return cstr("presence");
-                case tlv_packet_data::avatar:      return cstr("avatar");
-                case tlv_packet_data::group_chats: return cstr("group_chats");
+                case tlv_packet_data::stream:      return cstr("tlv_packet_data::stream,");
+                case tlv_packet_data::device:      return cstr("tlv_packet_data::device,");
+                case tlv_packet_data::lists:       return cstr("tlv_packet_data::lists,");
+                case tlv_packet_data::im:          return cstr("tlv_packet_data::im,");
+                case tlv_packet_data::presence:    return cstr("tlv_packet_data::presence,");
+                case tlv_packet_data::avatar:      return cstr("tlv_packet_data::avatar,");
+                case tlv_packet_data::group_chats: return cstr("tlv_packet_data::group_chats,");
                 default: return "(unkn) " + std::to_string(packet.family.get());
             }
         }();
     return "tlv_packet_data {"
         // don't align "head = ", it looks ugly in the output
-        + newl_indent + "head = " + show_tlv_packet_header(packet.head, indent_offset+4)
-        + newl_indent + "flags    = " + flags
-        + newl_indent + "family   = " + family
-        + newl_indent + "msg_type = " + show_msg_type(packet.family, packet.msg_type.get())
-        + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
-        + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
-        + newl_indent + "block[]  = " + show_tlv_unit(packet.get_block(), indent_offset+4, packet)
+        + newl_indent + "head : " + show_tlv_packet_header(packet.head, indent_offset+4)
+        + newl_indent + "flags    : " + flags
+        + newl_indent + "family   : " + family
+        + newl_indent + "msg_type : " + show_msg_type(packet.family, packet.msg_type.get())
+        + newl_indent + "sequence : " + std::to_string(packet.sequence.get()) + ","
+        + newl_indent + "block    : " + show_tlv_unit(packet.get_block(), indent_offset+4, packet)
         + indent_base + "\n}";
 }
 
@@ -341,8 +339,8 @@ cstr show_tlv_packet_version(const tlv_packet_version& v, uint indent_offset){
     cstr indent_base = cstr(indent_offset, ' ');
     cstr newl_indent = "\n" + indent_base + cstr(4, ' ');
     return "tlv_packet_version {"
-        + newl_indent + "head = " + show_tlv_packet_header(v.head, indent_offset+4)
-        + newl_indent + "protocol_version = " + std::to_string(v.protocol_version.get())
+        + newl_indent + "head : " + show_tlv_packet_header(v.head, indent_offset+4)
+        + newl_indent + "protocol_version : " + std::to_string(v.protocol_version.get())
         + indent_base + "\n}";
 }
 
