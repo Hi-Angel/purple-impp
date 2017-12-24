@@ -116,6 +116,12 @@ static string handle_error(const tlv_packet_data& pckt, IMPPConnectionData& impp
                 if (!impp.ack_waiting.erase(pckt.sequence.get()))
                     purple_debug_info({"wrn: response to a packet we never sent\n"});
                 return err_desc;
+            default:
+                assert(0);
+                purple_debug_info({"wrn: unknown im error\n"});
+                if (!impp.ack_waiting.erase(pckt.sequence.get()))
+                    purple_debug_info({"wrn: response to a packet we never sent\n"});
+                return err_desc;
         }
         case tlv_packet_data::presence:    // todo:
         case tlv_packet_data::avatar:      // todo:
@@ -216,6 +222,9 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
         }
         case tlv_packet_data::extension:
             purple_debug_info("impp", "wrn: extension request from a server, what could that be?\n");
+            return;
+        default:
+            purple_debug_info({"wrn: unknown incoming flag\n"});
             return;
     }
 }
