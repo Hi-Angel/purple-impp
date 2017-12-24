@@ -123,4 +123,44 @@ const tlv_packet_data templ_basic_request = tlv_packet_data {
     block  : {}
 };
 
+const tlv_packet_data templ_user_msg = tlv_packet_data {
+    head : tlv_packet_header {
+        magic   : magic,
+        channel : tlv_packet_header::tlv
+    },
+    flags    : tlv_packet_data::request,
+    family   : tlv_packet_data::im,
+    msg_type : IM::MESSAGE_SEND,
+    sequence : 1,
+    block    : {
+        tlv_unit {
+            type : IM::FROM,
+            val  : {}
+        },
+        tlv_unit {
+            type : IM::TO,
+            val  : {}
+        },
+        tlv_unit {
+            type : IM::MESSAGE_ID,
+            val  : { 0x00, 0x00, 0x00, 0x00 }
+        },
+        tlv_unit {
+            type : IM::MESSAGE_SIZE,
+            val  : { 0x00, 0x00, 0x00, 0x00 }
+        },
+        tlv_unit {
+            type : IM::MESSAGE_CHUNK,
+            val  : {}
+        },
+        tlv_unit {
+            type : IM::CAPABILITY,
+            val  : { 0x00, 0x01 } // IM::CAPABILITY_IM
+        },
+        tlv_unit {
+            type : IM::CREATED_AT,
+            val  : { 0x00, 0x00, 0x01, 0x3C, 0x1A, 0xDF, 0x2B, 0x23 }
+        }}
+};
+
 #endif //COMMON_CONSTS_H
