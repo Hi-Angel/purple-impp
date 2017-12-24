@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <connection.h>
 #include <string>
+#include <deque>
 #include "protocol.h"
 
 struct SentRecord {
@@ -34,22 +35,26 @@ struct IMPPConnectionData {
     int impp_tcp;
 
     // key = sequence number
-    std::unordered_map<uint32_t, SentRecord>* comm_database = 0;
+    std::unordered_map<uint32_t, SentRecord> ack_waiting;
     PurpleSslConnection *ssl;
 
     // scratch buf for input data. Performance-wise it supposed to leave allocated
     // space untouched most of times on shrink, hence just do resize() instead of
     // storing a uint for tracking the size.
-    // todo: performance-wise std::dequeue is better, but unclear how to deal with
+    // todo: performance-wise std::deque is better, but unclear how to deal with
     // uncontiguous memory, nor a priority
     std::vector<uint8_t> recvd;
+
+    // server freaks out upon getting packets without waiting for reply. Queue them.
+    std::deque<tlv_packet_data> send_queue;
     uint32_t next_seq;
 };
 
 bool is_global_err(uint16_t err);
 void impp_close(PurpleConnection *conn);
 void impp_close(PurpleConnection *conn, const std::string reason);
-size_t impp_send_tls(tlv_packet_data& pckt, IMPPConnectionData* impp);
+// enqueues and sends packets
+size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp);
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition);
 
 #endif //COMM_H

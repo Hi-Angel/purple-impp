@@ -18,6 +18,7 @@
 
 #include <debug.h>
 #include <unistd.h>
+#include <numeric>
 #include "comm.h"
 #include "utils.h"
 
@@ -31,10 +32,9 @@ void impp_close(PurpleConnection *conn, const string description) {
     int errno1 = errno;
     purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *impp = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    if (impp->comm_database) {
-        delete impp->comm_database;
-        impp->comm_database = 0;
-    }
+    impp->ack_waiting.clear();
+    impp->recvd.clear();
+    impp->send_queue.clear();
     string err = (!description.empty())? description.c_str()
         : (errno1 == 0)? "Server closed connection"
         : string{"Lost connection with "} + g_strerror(errno1);
@@ -54,84 +54,107 @@ void impp_close(PurpleConnection *conn) {
 // handles error, like figures if connection properties needs to be updated or
 // closed. Returns description of situation if there's anything to print or empty
 // string otherwise.
-string handle_error(const tlv_packet_data& pckt, PurpleConnection *conn) {
+static string handle_error(const tlv_packet_data& pckt, IMPPConnectionData& impp) {
     assert(pckt.get_block()[0].get_val().size() == 2);
     uint16_t err = pckt.uint16_val_at(0);
+    string err_desc = show_tlv_error(pckt.family, err);
     if (is_global_err(err))
         switch (err) {
             case GLOBAL::SUCCESS:             return "";
             case GLOBAL::SERVICE_UNAVAILABLE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             case GLOBAL::INVALID_CONNECTION:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             case GLOBAL::INVALID_STATE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_FAMILY:  return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_LENGTH:  return show_tlv_error(pckt.family, err);
-            case GLOBAL::INVALID_TLV_VALUE:   return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
+            case GLOBAL::INVALID_TLV_FAMILY:  return err_desc;
+            case GLOBAL::INVALID_TLV_LENGTH:  return err_desc;
+            case GLOBAL::INVALID_TLV_VALUE:   return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
         }
     switch(pckt.family.get()) {
         case tlv_packet_data::stream: switch (err){
-            case STREAM::FEATURE_INVALID:        return show_tlv_error(pckt.family, err);
-            case STREAM::MECHANISM_INVALID:      return show_tlv_error(pckt.family, err);
+            case STREAM::FEATURE_INVALID:        return err_desc;
+            case STREAM::MECHANISM_INVALID:      return err_desc;
             case STREAM::AUTHENTICATION_INVALID:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
         }
-        case tlv_packet_data::device:switch (err) {
+        case tlv_packet_data::device: switch (err) {
             case DEVICE::CLIENT_INVALID:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             case DEVICE::DEVICE_COLLISION:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             case DEVICE::TOO_MANY_DEVICES:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             case DEVICE::DEVICE_BOUND_ELSEWHERE:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
             default:
-                impp_close(conn);
-                return show_tlv_error(pckt.family, err);
+                impp_close(impp.conn, err_desc);
+                return err_desc;
         }
-        case tlv_packet_data::lists:       // todo: fall through
-        case tlv_packet_data::im:          // todo: fall through
-        case tlv_packet_data::presence:    // todo: fall through
-        case tlv_packet_data::avatar:      // todo: fall through
-        case tlv_packet_data::group_chats: // todo: fall through
+        case tlv_packet_data::lists:       // todo
+            impp_close(impp.conn, err_desc);
+            return err_desc;
+        case tlv_packet_data::im: switch(err) {
+            case IM::USERNAME_BLOCKED:     // fall through
+            case IM::USERNAME_NOT_CONTACT: // fall through
+            case IM::INVALID_CAPABILITY:   // fall through
+                if (!impp.ack_waiting.erase(pckt.sequence.get()))
+                    purple_debug_info({"wrn: response to a packet we never sent\n"});
+                return err_desc;
+        }
+        case tlv_packet_data::presence:    // todo:
+        case tlv_packet_data::avatar:      // todo:
+        case tlv_packet_data::group_chats: // todo:
         default:
-            impp_close(conn);
-            return show_tlv_error(pckt.family, err);
+            impp_close(impp.conn, err_desc);
+            return err_desc;
     }
-
 }
 
-size_t impp_send_tls(tlv_packet_data& pckt, IMPPConnectionData* impp) {
-    unordered_map<uint32_t,SentRecord>& db = *impp->comm_database;
-    pckt.sequence = impp->next_seq++;
-    const std::vector<uint8_t> dat_pckt = serialize(pckt);
-    // guard database with mutices if multiple threads involved
-    db[pckt.sequence.get()] = {};
-    return purple_ssl_write(impp->ssl, dat_pckt.data(), dat_pckt.size());
+// enqueues and sends packets
+size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp) {
+    if (impp.ack_waiting.empty()) {
+        if (in || !impp.send_queue.empty()) {
+            // todo: guard the data with mutices if multiple threads involved
+            tlv_packet_data pckt = (in)? *in : pop_front(impp.send_queue);
+            pckt.sequence = impp.next_seq++;
+            const std::vector<uint8_t> dat_pckt = serialize(pckt);
+            impp.ack_waiting[pckt.sequence.get()] = {};
+            return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
+        }
+    } else {
+        purple_debug_info("queue_next: packets №"
+                          + accumulate(impp.ack_waiting.begin(),
+                                       impp.ack_waiting.end(),
+                                       string{""},
+                                       [](string acc, auto i) { return acc + to_string(i.first); })
+                          + " still unanswered\n");
+        if (in)
+            impp.send_queue.push_back(*in);
+    }
+    return 0;
 }
 
-// lack of the counterpart to impp_send_tls is because making it a separate function
+// lack of the counterpart to impp_send_tls is because extracting the function
 // results in too much boilerplate
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "handle_incoming called\n");
-    IMPPConnectionData* impp = ((IMPPConnectionData*)in);
-    unordered_map<uint32_t,SentRecord>& db = *impp->comm_database;
-    std::vector<uint8_t>& buf = impp->recvd;
+    IMPPConnectionData& impp = *((IMPPConnectionData*)in);
+    std::vector<uint8_t>& buf = impp.recvd;
     do {
         const uint old_sz = buf.size(), toread = 1024;
         buf.resize(old_sz + toread);
@@ -143,7 +166,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             if (errno1 == EAGAIN)
                 return;
             else {
-                impp_close(impp->conn);
+                impp_close(impp.conn);
                 return;
             }
         }
@@ -176,15 +199,17 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             purple_debug_info("impp", "wrn: request from a server, what could that be?\n");
             return;
         case tlv_packet_data::response:
-            if (!db.erase(pckt.sequence.get()))
+            if (!impp.ack_waiting.erase(pckt.sequence.get()))
                 purple_debug_info("impp", "wrn: response to a packet we never sent\n");
+            else
+                impp_send_tls(0, impp);
             return;
         case tlv_packet_data::indication:
             purple_debug_info("impp", "todo: indication\n");
             return;
         case tlv_packet_data::error: {
-            string err = handle_error(pckt, impp->conn);
-            if (!err.empty())
+            string err = handle_error(pckt, impp);
+            if (!err.empty()) // todo: probably, show error in the focused chat
                 purple_debug_info("error " + err);
             return;
         }
