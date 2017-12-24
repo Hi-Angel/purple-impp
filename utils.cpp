@@ -62,9 +62,8 @@ std::pair<int,z_stream> inflate(const z_stream& s, bool doInit) {
                 case Z_BUF_ERROR: /* not enough output space. In general not fatal */
                     return {ret, strm};
                 default: /* not enough output space. In general not fatal */
-                    assert(false);
-                    purple_debug_info("unknown result of inflate!");
-                    return {ret, strm};
+                    assert(ret >= 0);
+                    break;
             }
         } while (strm.avail_out == 0);
     } while (ret != Z_STREAM_END); /* done when inflate() says it's done */
