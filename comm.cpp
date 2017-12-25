@@ -142,13 +142,15 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
     // todo: guard the data with mutices if multiple threads involved
     if (in)
         impp.send_queue.push_back(*in);
-    if (impp.ack_waiting.empty() && !impp.send_queue.empty()) {
-        impp_debug_info("dbg: sending next packet");
-        tlv_packet_data pckt = pop_front(impp.send_queue);
-        pckt.sequence = impp.next_seq++;
-        const std::vector<uint8_t> dat_pckt = serialize(pckt);
-        impp.ack_waiting[pckt.sequence.get()] = {};
-        return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
+    if (impp.ack_waiting.empty()) {
+        if (!impp.send_queue.empty()) {
+            impp_debug_info("dbg: sending next packet");
+            tlv_packet_data pckt = pop_front(impp.send_queue);
+            pckt.sequence = impp.next_seq++;
+            const std::vector<uint8_t> dat_pckt = serialize(pckt);
+            impp.ack_waiting[pckt.sequence.get()] = {};
+            return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
+        }
     } else {
         impp_debug_info("queue_next: packets №"
                              + accumulate(impp.ack_waiting.begin(),
@@ -248,6 +250,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             if (pckt.family.get() == tlv_packet_data::im
                 && pckt.msg_type.get() == IM::OFFLINE_MESSAGES_GET)
                 handle_offline_msgs(pckt.get_block(), impp);
+            // else todo
             // todo: handle OFFLINE_MESSAGE at flags=lists (just a notification)
             return;
         case tlv_packet_data::indication:
