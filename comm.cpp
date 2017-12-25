@@ -34,8 +34,10 @@ bool is_global_err(uint16_t err) {
 
 void impp_close(PurpleConnection *conn, const string description) {
     int errno1 = errno;
-    purple_debug_info("impp", "impp closing connection\n");
     IMPPConnectionData *impp = (IMPPConnectionData*)purple_connection_get_protocol_data(conn);
+    if (!impp->conn) // after closing pidgin calls it again, ignore it
+        return;
+    purple_debug_info("impp", "impp closing connection\n");
     impp->ack_waiting.clear();
     impp->recvd.clear();
     impp->send_queue.clear();
