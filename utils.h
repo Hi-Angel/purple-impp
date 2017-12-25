@@ -20,6 +20,7 @@
 #define UTILS_H
 
 #include <vector>
+#include <protocol.h>
 
 template<typename T>
 std::vector<T> operator+(const std::vector<T>& lhs, const std::vector<T>& rhs) {
@@ -41,7 +42,7 @@ const char* strerror_newl(int err);
 // uncompressed). For human-readable description of error use zerror()
 std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
-void purple_debug_info(std::string s);
+void impp_debug_info(std::string s);
 
 template<typename T>
 typename T::value_type pop_front(T& container) {
@@ -49,5 +50,7 @@ typename T::value_type pop_front(T& container) {
     container.pop_front();
     return std::move(t);
 }
+
+uint locate_tlv_type(const std::vector<tlv_unit>& unit, uint16_t type);
 
 #endif //UTILS_H

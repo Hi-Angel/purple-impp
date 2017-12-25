@@ -42,6 +42,8 @@ void hexdump(const unsigned char *buf, uint buflen) {
 }
 
 cstr to_hex(const uint8_t* arr, uint sz_arr) {
+    if (sz_arr == 0)
+        return "";
     const uint byte_image = 2, section = byte_image + 1;
     char buf[section * sz_arr];
     for (uint i = 0; i < sz_arr; ++i) {
@@ -72,100 +74,101 @@ cstr show_tlv_packet_header(const tlv_packet_header& h, uint indent_offset){
 }
 
 cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
+    cstr sz = (type & (1 << 15))? "(bits 32) " : "(bits 16) ";
     switch (family.get()) {
         case tlv_packet_data::FAMILY::stream:
             switch (type) {
-                case STREAM::ERRORCODE: return "ERRORCODE";
-                case STREAM::FEATURES:  return "FEATURES";
-                case STREAM::MECHANISM: return "MECHANISM";
-                case STREAM::NAME:      return "NAME";
-                case STREAM::TIMESTAMP: return "TIMESTAMP";
-                case STREAM::PASSWORD:  return "PASSWORD";
+                case STREAM::ERRORCODE: return sz + "ERRORCODE";
+                case STREAM::FEATURES:  return sz + "FEATURES";
+                case STREAM::MECHANISM: return sz + "MECHANISM";
+                case STREAM::NAME:      return sz + "NAME";
+                case STREAM::TIMESTAMP: return sz + "TIMESTAMP";
+                case STREAM::PASSWORD:  return sz + "PASSWORD";
                 default: break;
             }
             break;
         case tlv_packet_data::FAMILY::device:
             switch (type) {
-                case DEVICE::ERRORCODE:           return "ERRORCODE";
-                case DEVICE::CLIENT_NAME:         return "CLIENT_NAME";
-                case DEVICE::CLIENT_PLATFORM:     return "CLIENT_PLATFORM";
-                case DEVICE::CLIENT_MODEL:        return "CLIENT_MODEL";
-                case DEVICE::CLIENT_ARCH:         return "CLIENT_ARCH";
-                case DEVICE::CLIENT_VERSION:      return "CLIENT_VERSION";
-                case DEVICE::CLIENT_BUILD:        return "CLIENT_BUILD";
-                case DEVICE::CLIENT_DESCRIPTION:  return "CLIENT_DESCRIPTION";
-                case DEVICE::DEVICE_NAME:         return "DEVICE_NAME";
-                case DEVICE::IP_ADDRESS:          return "IP_ADDRESS";
-                case DEVICE::CONNECTED_AT:        return "CONNECTED_AT";
-                case DEVICE::STATUS:              return "STATUS";
-                case DEVICE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
-                case DEVICE::CAPABILITIES:        return "CAPABILITIES";
-                case DEVICE::IS_IDLE:             return "IS_IDLE";
-                case DEVICE::IS_MOBILE:           return "IS_MOBILE";
-                case DEVICE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
-                case DEVICE::SERVER:              return "SERVER";
-                case DEVICE::DEVICE_TUPLE:        return "DEVICE_TUPLE";
+                case DEVICE::ERRORCODE:           return sz + "ERRORCODE";
+                case DEVICE::CLIENT_NAME:         return sz + "CLIENT_NAME";
+                case DEVICE::CLIENT_PLATFORM:     return sz + "CLIENT_PLATFORM";
+                case DEVICE::CLIENT_MODEL:        return sz + "CLIENT_MODEL";
+                case DEVICE::CLIENT_ARCH:         return sz + "CLIENT_ARCH";
+                case DEVICE::CLIENT_VERSION:      return sz + "CLIENT_VERSION";
+                case DEVICE::CLIENT_BUILD:        return sz + "CLIENT_BUILD";
+                case DEVICE::CLIENT_DESCRIPTION:  return sz + "CLIENT_DESCRIPTION";
+                case DEVICE::DEVICE_NAME:         return sz + "DEVICE_NAME";
+                case DEVICE::IP_ADDRESS:          return sz + "IP_ADDRESS";
+                case DEVICE::CONNECTED_AT:        return sz + "CONNECTED_AT";
+                case DEVICE::STATUS:              return sz + "STATUS";
+                case DEVICE::STATUS_MESSAGE:      return sz + "STATUS_MESSAGE";
+                case DEVICE::CAPABILITIES:        return sz + "CAPABILITIES";
+                case DEVICE::IS_IDLE:             return sz + "IS_IDLE";
+                case DEVICE::IS_MOBILE:           return sz + "IS_MOBILE";
+                case DEVICE::IS_STATUS_AUTOMATIC: return sz + "IS_STATUS_AUTOMATIC";
+                case DEVICE::SERVER:              return sz + "SERVER";
+                case DEVICE::DEVICE_TUPLE:        return sz + "DEVICE_TUPLE";
                 default: break;
             }
             break;
         case tlv_packet_data::FAMILY::lists:
             switch (type) {
-                case LISTS::ERRORCODE:       return "ERRORCODE";
-                case LISTS::FROM:            return "FROM";
-                case LISTS::TO:              return "TO";
-                case LISTS::CONTACT_ADDRESS: return "CONTACT_ADDRESS";
-                case LISTS::PENDING_ADDRESS: return "PENDING_ADDRESS";
-                case LISTS::ALLOW_ADDRESS:   return "ALLOW_ADDRESS";
-                case LISTS::BLOCK_ADDRESS:   return "BLOCK_ADDRESS";
-                case LISTS::AVATAR_SHA1:     return "AVATAR_SHA1";
-                case LISTS::NICKNAME:        return "NICKNAME";
+                case LISTS::ERRORCODE:       return sz + "ERRORCODE";
+                case LISTS::FROM:            return sz + "FROM";
+                case LISTS::TO:              return sz + "TO";
+                case LISTS::CONTACT_ADDRESS: return sz + "CONTACT_ADDRESS";
+                case LISTS::PENDING_ADDRESS: return sz + "PENDING_ADDRESS";
+                case LISTS::ALLOW_ADDRESS:   return sz + "ALLOW_ADDRESS";
+                case LISTS::BLOCK_ADDRESS:   return sz + "BLOCK_ADDRESS";
+                case LISTS::AVATAR_SHA1:     return sz + "AVATAR_SHA1";
+                case LISTS::NICKNAME:        return sz + "NICKNAME";
                 default: break;
             }
         case tlv_packet_data::FAMILY::im:
             switch (type) {
-                case IM::ERRORCODE:       return "ERRORCODE";
-                case IM::FROM:            return "FROM";
-                case IM::TO:              return "TO";
-                case IM::CAPABILITY:      return "CAPABILITY";
-                case IM::MESSAGE_ID:      return "MESSAGE_ID";
-                case IM::MESSAGE_SIZE:    return "MESSAGE_SIZE";
-                case IM::MESSAGE_CHUNK:   return "MESSAGE_CHUNK";
-                case IM::CREATED_AT:      return "CREATED_AT";
-                case IM::TIMESTAMP:       return "TIMESTAMP";
-                case IM::OFFLINE_MESSAGE: return "OFFLINE_MESSAGE";
+                case IM::ERRORCODE:       return sz + "ERRORCODE";
+                case IM::FROM:            return sz + "FROM";
+                case IM::TO:              return sz + "TO";
+                case IM::CAPABILITY:      return sz + "CAPABILITY";
+                case IM::MESSAGE_ID:      return sz + "MESSAGE_ID";
+                case IM::MESSAGE_SIZE:    return sz + "MESSAGE_SIZE";
+                case IM::MESSAGE_CHUNK:   return sz + "MESSAGE_CHUNK";
+                case IM::CREATED_AT:      return sz + "CREATED_AT";
+                case IM::TIMESTAMP:       return sz + "TIMESTAMP";
+                case IM::OFFLINE_MESSAGE: return sz + "OFFLINE_MESSAGE";
                 default: break;
             }
         case tlv_packet_data::FAMILY::presence:
             switch (type) {
-                case PRESENCE::ERRORCODE:           return "ERRORCODE";
-                case PRESENCE::FROM:                return "FROM";
-                case PRESENCE::TO:                  return "TO";
-                case PRESENCE::STATUS:              return "STATUS";
-                case PRESENCE::STATUS_MESSAGE:      return "STATUS_MESSAGE";
-                case PRESENCE::IS_STATUS_AUTOMATIC: return "IS_STATUS_AUTOMATIC";
-                case PRESENCE::AVATAR_SHA1:         return "AVATAR_SHA1";
-                case PRESENCE::NICKNAME:            return "NICKNAME";
-                case PRESENCE::CAPABILITIES:        return "CAPABILITIES";
+                case PRESENCE::ERRORCODE:           return sz + "ERRORCODE";
+                case PRESENCE::FROM:                return sz + "FROM";
+                case PRESENCE::TO:                  return sz + "TO";
+                case PRESENCE::STATUS:              return sz + "STATUS";
+                case PRESENCE::STATUS_MESSAGE:      return sz + "STATUS_MESSAGE";
+                case PRESENCE::IS_STATUS_AUTOMATIC: return sz + "IS_STATUS_AUTOMATIC";
+                case PRESENCE::AVATAR_SHA1:         return sz + "AVATAR_SHA1";
+                case PRESENCE::NICKNAME:            return sz + "NICKNAME";
+                case PRESENCE::CAPABILITIES:        return sz + "CAPABILITIES";
                 default: break;
             }
         case tlv_packet_data::FAMILY::avatar:
             break; // todo
         case tlv_packet_data::FAMILY::group_chats:
             switch (type) {
-                case GROUP_CHATS::ERRORCODE:        return "ERRORCODE";
-                case GROUP_CHATS::FROM:             return "FROM";
-                case GROUP_CHATS::NAME:             return "NAME";
-                case GROUP_CHATS::MEMBER:           return "MEMBER";
-                case GROUP_CHATS::INITIAL:          return "INITIAL";
-                case GROUP_CHATS::MESSAGE:          return "MESSAGE";
-                case GROUP_CHATS::TIMESTAMP:        return "TIMESTAMP";
-                case GROUP_CHATS::GROUP_CHAT_TUPLE: return "GROUP_CHAT_TUPLE";
+                case GROUP_CHATS::ERRORCODE:        return sz + "ERRORCODE";
+                case GROUP_CHATS::FROM:             return sz + "FROM";
+                case GROUP_CHATS::NAME:             return sz + "NAME";
+                case GROUP_CHATS::MEMBER:           return sz + "MEMBER";
+                case GROUP_CHATS::INITIAL:          return sz + "INITIAL";
+                case GROUP_CHATS::MESSAGE:          return sz + "MESSAGE";
+                case GROUP_CHATS::TIMESTAMP:        return sz + "TIMESTAMP";
+                case GROUP_CHATS::GROUP_CHAT_TUPLE: return sz + "GROUP_CHAT_TUPLE";
                 default: break;
             }
         default:
-            return std::to_string(type);
+            return sz + std::to_string(type);
     }
-    return std::to_string(type);
+    return sz + std::to_string(type);
 }
 
 cstr show_tlv_unit(const std::vector<tlv_unit>& units,
@@ -194,7 +197,7 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units,
     return ret;
 }
 
-cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data pckt) {
+cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data& pckt) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
     return show_tlv_unit(units, indent_offset, pckt);
 }
