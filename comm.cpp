@@ -143,11 +143,12 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
     if (in)
         impp.send_queue.push_back(*in);
     if (impp.ack_waiting.empty() && !impp.send_queue.empty()) {
-            tlv_packet_data pckt = pop_front(impp.send_queue);
-            pckt.sequence = impp.next_seq++;
-            const std::vector<uint8_t> dat_pckt = serialize(pckt);
-            impp.ack_waiting[pckt.sequence.get()] = {};
-            return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
+        purple_debug_info("dbg: sending next packet");
+        tlv_packet_data pckt = pop_front(impp.send_queue);
+        pckt.sequence = impp.next_seq++;
+        const std::vector<uint8_t> dat_pckt = serialize(pckt);
+        impp.ack_waiting[pckt.sequence.get()] = {};
+        return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
     } else {
         purple_debug_info("queue_next: packets №"
                           + accumulate(impp.ack_waiting.begin(),
@@ -155,8 +156,6 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
                                        string{""},
                                        [](string acc, auto i) { return acc + to_string(i.first); })
                           + " still unanswered\n");
-        if (in)
-            impp.send_queue.push_back(*in);
     }
     return 0;
 }
