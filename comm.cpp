@@ -211,7 +211,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
     do {
         const uint old_sz = buf.size(), toread = 1024;
         buf.resize(old_sz + toread);
-        int bytes = purple_ssl_read(ssl, &buf[0], toread);
+        int bytes = purple_ssl_read(ssl, &buf[old_sz], toread);
         if (bytes <= 0) {
             int errno1 = errno;
             buf.resize(old_sz);
