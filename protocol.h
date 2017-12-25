@@ -209,6 +209,8 @@ enum ERROR: uint16_t {
 namespace IM {
 const uint16_t CAPABILITY_IM     = 1;
 const uint16_t CAPABILITY_TYPING = 2;
+const uint16_t TYPING_STOPPED    = 0; // undocumented
+const uint16_t TYPING_STARTED    = 2; // undocumented
 
 /* a tlv_packet msg_type */
 enum MSG_TYPE: uint16_t {

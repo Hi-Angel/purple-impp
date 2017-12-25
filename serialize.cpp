@@ -63,22 +63,25 @@ variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const u
     variant head = deserialize<tlv_packet_header>(dat, sz_dat);
     if (holds_alternative<nothing>(head))
         return {"couldn't deserialize packet header"};
-    if (get<tlv_packet_header>(head).channel == tlv_packet_header::version) {
-        variant version = deserialize<tlv_packet_version>(dat, sz_dat);
-        // ternary doesn't support constructors
-        if (holds_alternative<nothing>(version))
-            return {"failed deserializing packet_version"};
-        else
-            return get<tlv_packet_version>(version);
-    } else if (get<tlv_packet_header>(head).channel == tlv_packet_header::tlv) {
-        variant dat_packet = deserialize<tlv_packet_data>(dat, sz_dat);
-        // ternary doesn't support constructors
-        if (holds_alternative<nothing>(dat_packet))
-            return {"failed deserializing packet_data"};
-        else
-            return get<tlv_packet_data>(dat_packet);
-    } else {
-        return {"unknown packet channel, ignoring!"};
+    switch (get<tlv_packet_header>(head).channel) {
+        case tlv_packet_header::version: {
+            variant version = deserialize<tlv_packet_version>(dat, sz_dat);
+            // ternary doesn't support constructors
+            if (holds_alternative<nothing>(version))
+                return {"failed deserializing packet_version"};
+            else
+                return get<tlv_packet_version>(version);
+        }
+        case tlv_packet_header::tlv: {
+            variant dat_packet = deserialize<tlv_packet_data>(dat, sz_dat);
+            // ternary doesn't support constructors
+            if (holds_alternative<nothing>(dat_packet))
+                return {"failed deserializing packet_data"};
+            else
+                return get<tlv_packet_data>(dat_packet);
+        }
+        default:
+            return {"unknown packet channel, ignoring!"};
     }
 }
 variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat) {

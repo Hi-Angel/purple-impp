@@ -163,6 +163,21 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
 }
 
 static
+void show_msg_from(IMPPConnectionData& impp, string from, string msg,
+                  PurpleMessageFlags flags, time_t t) {
+    if (flags != PURPLE_MESSAGE_ERROR) {
+        // check if FROM-BUD exist, create a new one otherwise
+        // todo: buds handling here needs to be reconsidered after contact list and
+        // contact requests are implemented
+        PurpleBuddy* bud = purple_find_buddy(impp.conn->account, from.c_str());
+        if (!bud)
+            bud = purple_buddy_new(impp.conn->account, from.c_str(), 0);
+        purple_blist_add_buddy(bud, 0, 0, 0);
+    }
+    serv_got_im(impp.conn, from.c_str(), msg.c_str(), flags, t);
+}
+
+static
 void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp) {
     for(const tlv_unit& u : batch) {
         const vector<tlv_unit> msg_unit = deserialize_units(u.get_val().data(), u.get_val().size());
@@ -173,22 +188,16 @@ void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp
             impp_debug_info("err: incorrect msg, ignoring");
             continue;
         }
-        // check if FROM-BUD exist, create a new one otherwise
-        // todo: buds handling here needs to be reconsidered after contact list and
-        // contact requests are implemented
+
         #define val_at(i) (msg_unit[i].get_val())
         string from = {val_at(from_i).data(), val_at(from_i).data() + val_at(from_i).size()},
             msg = {val_at(msg_i).data(), val_at(msg_i).data() + val_at(msg_i).size()};
         #undef val_at
-        PurpleBuddy* bud = purple_find_buddy(impp.conn->account, from.c_str());
-        if (!bud)
-            bud = purple_buddy_new(impp.conn->account, from.c_str(), 0);
-        purple_blist_add_buddy(bud, 0, 0, 0);
 
-        // show the message
         // todo: I dunno what's the time format they're using, not POSIX for sure.
         time_t t = 0;
-        serv_got_im(impp.conn, from.c_str(), msg.c_str(), PURPLE_MESSAGE_RECV, t);
+        show_msg_from(impp, from, msg, PURPLE_MESSAGE_RECV, t);
+        // todo: notify the server we got the msg
         impp_debug_info("dbg: offline message handled!");
     }
 }
