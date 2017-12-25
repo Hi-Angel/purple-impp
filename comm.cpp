@@ -258,8 +258,12 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             return;
         case tlv_packet_data::error: {
             string err = handle_error(pckt, impp);
-            if (!err.empty()) // todo: probably, show error in the focused chat
+            if (!err.empty()) {
+                time_t t = time(0);
+                // todo: if the error is im-specific, use the relevant tab
+                serv_got_im(impp.conn, err.c_str(), err.c_str(), PURPLE_MESSAGE_ERROR, t);
                 impp_debug_info("error " + err);
+            }
             return;
         }
         case tlv_packet_data::extension:
@@ -286,11 +290,11 @@ int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
     const string from = {conn->account->username},
         to1 = {to},
         msg1 = {msg};
+    uint32bg_t msg_size = msg1.size();
     pckt.set_tlv_val(0,{ from.data(),  from.data() + from.size()});
     pckt.set_tlv_val(1,{ to1.data(),   to1.data() + to1.size()});
-    pckt.set_tlv_val(4,{ msg1.data(),  msg1.data() + msg1.size()});
-    uint32bg_t msg_size = msg1.size();
     pckt.set_tlv_val(3,{ (uint8_t*)&msg_size, (uint8_t*)&msg_size + sizeof(msg_size)});
+    pckt.set_tlv_val(4,{ msg1.data(),  msg1.data() + msg1.size()});
     // todo: CREATED_AT
     impp_send_tls(&pckt, impp);
     return 1;
