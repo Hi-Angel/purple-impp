@@ -143,7 +143,7 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
     if (in)
         impp.send_queue.push_back(*in);
     if (impp.ack_waiting.empty() && !impp.send_queue.empty()) {
-        purple_debug_info("dbg: sending next packet");
+        purple_debug_info("dbg: sending next packet\n");
         tlv_packet_data pckt = pop_front(impp.send_queue);
         pckt.sequence = impp.next_seq++;
         const std::vector<uint8_t> dat_pckt = serialize(pckt);
@@ -181,12 +181,13 @@ void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp
         PurpleBuddy* bud = purple_find_buddy(impp.conn->account, from.c_str());
         if (!bud)
             bud = purple_buddy_new(impp.conn->account, from.c_str(), 0);
+        purple_blist_add_buddy(bud, 0, 0, 0);
 
         // show the message
         // todo: I dunno what's the time format they're using, not POSIX for sure.
         time_t t = 0;
         serv_got_im(impp.conn, from.c_str(), msg.c_str(), PURPLE_MESSAGE_RECV, t);
-        purple_debug_info("dbg: offline message handled!");
+        purple_debug_info("dbg: offline message handled!\n");
     }
 }
 
@@ -267,19 +268,25 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
     }
 }
 
-// todo: for very basic message-receiving contact list doesn't really matter, it's
-// unimportant whether FROM_BUD is in the list or not, because IMO throwing message
-// away would be silly anyway.
-// void add_buddy(){}
-
 // send user msg
-size_t impp_send_msg(IMPPConnectionData& impp, const string& msg, const string& to) {
+int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
+                 PurpleMessageFlags flags) {
+    IMPPConnectionData& impp = *(IMPPConnectionData*)purple_connection_get_protocol_data(conn);
+    purple_debug_info("dbg: impp_send_im called");
     #define tlv_type_at(i) templ_user_msg.get_block()[i].type.get()
     assert(tlv_type_at(0)    == IM::FROM && tlv_type_at(1) == IM::TO
-           && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::MESSAGE_SIZE
+           && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::TIMESTAMP
            && tlv_type_at(4) == IM::MESSAGE_CHUNK && tlv_type_at(5) == IM::CAPABILITY
            && tlv_type_at(6) == IM::CREATED_AT);
+
     tlv_packet_data pckt = templ_user_msg;
-    const string wrap_pre = "<HTML><BODY BGCOLOR=\"#ffffff\"><font lang=\"EN\">",
-        wrap_post = "</BODY></HTML>";
+    const string from = {conn->account->username},
+        to1 = {to},
+        msg1 = {msg};
+    pckt.set_tlv_val(0,{ from.data(),  from.data() + from.size()});
+    pckt.set_tlv_val(1,{ to1.data(),   to1.data() + to1.size()});
+    pckt.set_tlv_val(3,{ msg1.data(),  msg1.data() + msg1.size()});
+    // todo: CREATED_AT
+    impp_send_tls(&pckt, impp);
+    return 1;
 }

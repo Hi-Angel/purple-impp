@@ -56,5 +56,7 @@ void impp_close(PurpleConnection *conn, const std::string reason);
 // enqueues and sends packets
 size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp);
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition);
+int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
+                 PurpleMessageFlags flags);
 
 #endif //COMM_H

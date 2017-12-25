@@ -21,6 +21,7 @@
 // trying to make a minimal working prototype
 // 2. server is hardcoded, I need to construct some "DNS SRV lookup", whatever it is.
 // 3. whatever todos are in the code.
+// 4. rename some structs to shorten names, and add more impp_ prefixes to non-statics
 
 #include <glib.h>
 #include <string>
@@ -222,22 +223,23 @@ static void query_caps(IMPPConnectionData& impp) {
 
 void impp_on_tls_connect(gpointer data, PurpleSslConnection *ssl, PurpleInputCondition) {
     purple_debug_info("impp", "SSL connection established\n");
-    IMPPConnectionData& t_data = *((IMPPConnectionData*)data);
-    t_data.ssl = ssl;
-    t_data.next_seq = 100;
-    purple_ssl_input_add(ssl, handle_incoming, &t_data);
+    IMPPConnectionData& impp = *((IMPPConnectionData*)data);
+    impp.ssl = ssl;
+    impp.next_seq = 100;
+    purple_ssl_input_add(ssl, handle_incoming, &impp);
 
-    const char* name = purple_account_get_username(t_data.conn->account);
-    const char* pass = purple_account_get_password(t_data.conn->account);
+    const char* name = purple_account_get_username(impp.conn->account);
+    const char* pass = purple_account_get_password(impp.conn->account);
     tlv_packet_data auth = templ_authorize;
     auth.set_tlv_val(1, vector<uint8_t>{name, name + strlen(name)});
     auth.set_tlv_val(2, vector<uint8_t>{pass, pass + strlen(pass)});
-    impp_send_tls(&auth, t_data);
+    impp_send_tls(&auth, impp);
     tlv_packet_data client_info = templ_client_info;
-    impp_send_tls(&client_info, t_data);
+    impp_send_tls(&client_info, impp);
 
-    query_caps(t_data);
+    query_caps(impp);
     purple_debug_info("impp", "impp_on_tls_connect finished\n");
+    purple_connection_set_state(impp.conn, PURPLE_CONNECTED);
 }
 
 void impp_tcp_established_hook(gpointer data, gint src, const gchar *error_message) {
@@ -289,6 +291,7 @@ void impp_connection_start_login(PurpleConnection *conn) {
 void impp_login(PurpleAccount *acc) {
     purple_debug_info("impp", "impp login\n");
     PurpleConnection *conn = purple_account_get_connection(acc);
+    purple_connection_set_state(conn, PURPLE_CONNECTING);
     impp_connection_new(conn);
     impp_connection_start_login(conn);
 
@@ -297,6 +300,8 @@ void impp_login(PurpleAccount *acc) {
 
     // conn->flags |= PURPLE_CONNECTION_HTML;
 }
+
+gboolean impp_true(const PurpleBuddy*) { return true; }
 
 static PurplePluginProtocolInfo prpl_info = {
     OPT_PROTO_IM_IMAGE, // | OPT_PROTO_CHAT_TOPIC | OPT_PROTO_UNIQUE_CHATNAME,
@@ -321,7 +326,7 @@ static PurplePluginProtocolInfo prpl_info = {
     0, //impp_chat_info_defaults,     /* chat_info_defaults */
     impp_login,                       /* login */
     impp_close,                       /* close */
-    0,                                /* send_im */
+    impp_send_im,                     /* send_im */
     0,                                /* set_info */
     0,                                /* send_typing */
     0,                                /* get_info */
@@ -365,7 +370,7 @@ static PurplePluginProtocolInfo prpl_info = {
     0,                                /* can_receive_file */
     0,                                /* send_file */
     0,                                /* new_xfer */
-    0,                                /* offline_message */
+    impp_true,                        /* offline_message */
     0,                                /* whiteboard_prpl_ops */
     0,                                /* send_raw */
     0,                                /* roomlist_room_serialize */
