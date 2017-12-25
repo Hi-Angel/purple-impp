@@ -349,7 +349,7 @@ static PurplePluginProtocolInfo prpl_info = {
     0, //impp_chat_leave,             /* chat_leave */
     0,                                /* chat_whisper */
     0, //impp_chat_send,              /* chat_send */
-    0,                                /* keepalive */
+    impp_send_ping,                   /* keepalive */
     0,                                /* register_user */
     0,                                /* get_cb_info */
     0,                                /* get_cb_away */

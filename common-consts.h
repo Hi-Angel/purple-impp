@@ -167,4 +167,16 @@ const tlv_packet_data templ_user_msg = tlv_packet_data {
     block    : templ_user_msg_body
 };
 
+const tlv_packet_data templ_ping = tlv_packet_data {
+    head : tlv_packet_header {
+        magic   : magic,
+        channel : tlv_packet_header::tlv
+    },
+    flags    : tlv_packet_data::request,
+    family   : tlv_packet_data::stream,
+    msg_type : STREAM::PING,
+    sequence : 1,
+    block    : {}
+};
+
 #endif //COMMON_CONSTS_H

@@ -36,6 +36,11 @@ struct IMPPConnectionData {
 
     // key = sequence number
     std::unordered_map<uint32_t, SentRecord> ack_waiting;
+
+    // pings has a separate queue because judging by server's behavior pings not
+    // necessarily has to be invalidated by ping-response, but at least also by
+    // indications
+    std::vector<uint32_t> ping_waiting;
     PurpleSslConnection *ssl;
 
     // scratch buf for input data. Performance-wise it supposed to leave allocated
@@ -58,5 +63,6 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp);
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition);
 int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
                  PurpleMessageFlags flags);
+void impp_send_ping(PurpleConnection* conn);
 
 #endif //COMM_H

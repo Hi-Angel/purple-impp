@@ -117,7 +117,7 @@ static string handle_error(const tlv_packet_data& pckt, IMPPConnectionData& impp
         case tlv_packet_data::im: switch(err) {
             case IM::USERNAME_BLOCKED:     // fall through
             case IM::USERNAME_NOT_CONTACT: // fall through
-            case IM::INVALID_CAPABILITY:   // fall through
+            case IM::INVALID_CAPABILITY:
                 if (!impp.ack_waiting.erase(pckt.sequence.get()))
                     impp_debug_info("wrn: response to a packet we never sent");
                 return err_desc;
@@ -149,6 +149,8 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
             pckt.sequence = impp.next_seq++;
             const std::vector<uint8_t> dat_pckt = serialize(pckt);
             impp.ack_waiting[pckt.sequence.get()] = {};
+            if (pckt.msg_type.get() == STREAM::PING)
+                impp.ping_waiting.push_back(pckt.sequence.get());
             return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
         }
     } else {
@@ -291,6 +293,13 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
     buf.erase(buf.begin(), buf.begin() + pckt.curr_pckt_sz());
     impp_debug_info(show_tlv_packet_data(pckt, 0) + "\n");
 
+    // It seems, a server can, at least, reply with indication to a ping, which sort
+    // of makes sense however undocumented. So let's assume any packet as a
+    // ping-reply, and hope it won't have side-effects
+    for (uint32_t ping_seq : impp.ping_waiting)
+        impp.ack_waiting.erase(ping_seq);
+    impp.ping_waiting.clear();
+
     switch (pckt.flags.get()) {
         case tlv_packet_data::request:
             purple_debug_info("impp", "wrn: request from a server, what could that be?\n");
@@ -354,4 +363,11 @@ int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
     // todo: CREATED_AT
     impp_send_tls(&pckt, impp);
     return 1;
+}
+
+void impp_send_ping(PurpleConnection* conn) {
+    impp_debug_info("ping called");
+    IMPPConnectionData& impp = *(IMPPConnectionData*)purple_connection_get_protocol_data(conn);
+    tlv_packet_data ping = templ_ping;
+    impp_send_tls(&ping, impp);
 }
