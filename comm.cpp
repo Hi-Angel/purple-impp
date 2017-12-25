@@ -275,7 +275,7 @@ int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
     impp_debug_info("dbg: impp_send_im called");
     #define tlv_type_at(i) templ_user_msg.get_block()[i].type.get()
     assert(tlv_type_at(0)    == IM::FROM && tlv_type_at(1) == IM::TO
-           && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::TIMESTAMP
+           && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::MESSAGE_SIZE
            && tlv_type_at(4) == IM::MESSAGE_CHUNK && tlv_type_at(5) == IM::CAPABILITY
            && tlv_type_at(6) == IM::CREATED_AT);
 
@@ -286,6 +286,8 @@ int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
     pckt.set_tlv_val(0,{ from.data(),  from.data() + from.size()});
     pckt.set_tlv_val(1,{ to1.data(),   to1.data() + to1.size()});
     pckt.set_tlv_val(4,{ msg1.data(),  msg1.data() + msg1.size()});
+    uint32bg_t msg_size = msg1.size();
+    pckt.set_tlv_val(3,{ (uint8_t*)&msg_size, (uint8_t*)&msg_size + sizeof(msg_size)});
     // todo: CREATED_AT
     impp_send_tls(&pckt, impp);
     return 1;

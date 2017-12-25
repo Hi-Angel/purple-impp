@@ -138,13 +138,9 @@ const std::vector<tlv_unit> templ_user_msg_body = {
         val  : { 0x00, 0x00, 0x00, 0x00 }
     },
     tlv_unit {
-        type : IM::TIMESTAMP,
-        val  : {0x00, 0x00, 0x01, 0x60, 0x86, 0x72, 0x8E, 0xC0}
+        type : IM::MESSAGE_SIZE,
+        val  : { 0x00, 0x00, 0x00, 0x00 }
     },
-    // tlv_unit { trillian for some reason doesn't use this (at least in batches)
-    //     type : IM::MESSAGE_SIZE,
-    //     val  : { 0x00, 0x00, 0x00, 0x00 }
-    // },
     tlv_unit {
         type : IM::MESSAGE_CHUNK,
         val  : {}
