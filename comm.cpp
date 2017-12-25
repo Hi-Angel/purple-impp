@@ -285,7 +285,7 @@ int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
         msg1 = {msg};
     pckt.set_tlv_val(0,{ from.data(),  from.data() + from.size()});
     pckt.set_tlv_val(1,{ to1.data(),   to1.data() + to1.size()});
-    pckt.set_tlv_val(3,{ msg1.data(),  msg1.data() + msg1.size()});
+    pckt.set_tlv_val(4,{ msg1.data(),  msg1.data() + msg1.size()});
     // todo: CREATED_AT
     impp_send_tls(&pckt, impp);
     return 1;

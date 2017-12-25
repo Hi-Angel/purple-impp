@@ -42,6 +42,8 @@ void hexdump(const unsigned char *buf, uint buflen) {
 }
 
 cstr to_hex(const uint8_t* arr, uint sz_arr) {
+    if (sz_arr == 0)
+        return "";
     const uint byte_image = 2, section = byte_image + 1;
     char buf[section * sz_arr];
     for (uint i = 0; i < sz_arr; ++i) {
