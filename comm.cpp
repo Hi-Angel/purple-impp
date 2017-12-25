@@ -202,10 +202,54 @@ void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp
     }
 }
 
+static
+void handle_indication_im(const tlv_packet_data& pckt, IMPPConnectionData& impp) {
+    uint from_i = locate_tlv_type(pckt.get_block(), IM::FROM),
+        msg_i = locate_tlv_type(pckt.get_block(), IM::MESSAGE_CHUNK),
+        cap_i = locate_tlv_type(pckt.get_block(), IM::CAPABILITY);
+    if (from_i == pckt.get_block().size() || msg_i == pckt.get_block().size()
+        || cap_i == pckt.get_block().size()) {
+        assert(false);
+        impp_debug_info("err: incorrect msg, ignoring");
+        return;
+    }
+    #define val_at(i) (pckt.get_block()[i].get_val())
+    string from = {val_at(from_i).data(), val_at(from_i).data() + val_at(from_i).size()};
+
+    //note: indications shouldn't need a reply
+    if (pckt.msg_type.get() == IM::MESSAGE_SEND) {
+        switch (pckt.uint16_val_at(cap_i)) {
+            case IM::CAPABILITY_IM: {
+                string msg = {val_at(msg_i).data(), val_at(msg_i).data() + val_at(msg_i).size()};
+                // todo: I dunno what's the time format they're using, not POSIX for sure.
+                time_t t = 0;
+                show_msg_from(impp, from, msg, PURPLE_MESSAGE_RECV, t);
+                break;
+            }
+            case IM::CAPABILITY_TYPING: {
+                switch (pckt.uint16_val_at(msg_i)) {
+                    case IM::TYPING_STARTED:
+                        serv_got_typing(impp.conn, from.c_str(), 0, PURPLE_TYPING);
+                        break;
+                    case IM::TYPING_STOPPED:
+                        serv_got_typing_stopped(impp.conn, from.c_str());
+                        break;
+                    default:
+                        impp_debug_info("err: unknown CAPABILITY_TYPING val, ignoring");
+                }
+                break;
+            }
+            default:
+                impp_debug_info("err: unknown IM capability indication, ignoring");
+        }
+    }
+    #undef val_at
+}
+
 // lack of the counterpart to impp_send_tls is because extracting the function
 // results in too much boilerplate
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("impp", "handle_incoming called");
+    purple_debug_info("impp", "handle_incoming called\n");
     IMPPConnectionData& impp = *((IMPPConnectionData*)in);
     std::vector<uint8_t>& buf = impp.recvd;
     do {
@@ -263,7 +307,10 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             // todo: handle OFFLINE_MESSAGE at flags=lists (just a notification)
             return;
         case tlv_packet_data::indication:
-            purple_debug_info("impp", "todo: indication\n");
+            if (pckt.family.get() == tlv_packet_data::im)
+                handle_indication_im(pckt, impp);
+            else
+                purple_debug_info("impp", "todo: indications\n");
             return;
         case tlv_packet_data::error: {
             string err = handle_error(pckt, impp);
