@@ -362,6 +362,7 @@ struct tlv_packet_version {
     }
 };
 
+// details at 0c6c2126e2e756c1edee1127b0b328825dc39eb5 "Fix build errors after merge"
 #include "utils.h"
 std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
