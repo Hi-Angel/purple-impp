@@ -125,3 +125,11 @@ void zerror(int zlib_ret) {
 void purple_debug_info(std::string s) {
     purple_debug_info("impp", s.c_str());
 }
+
+// returns either the index with the type if it exists, or the size of array
+uint locate_tlv_type(const std::vector<tlv_unit>& unit, uint16_t type) {
+    uint i = 0;
+    for (; i < unit.size() && unit[i].type.get() != type; ++i)
+        ;
+    return i;
+}

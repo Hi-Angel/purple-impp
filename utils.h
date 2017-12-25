@@ -20,6 +20,7 @@
 #define UTILS_H
 
 #include <vector>
+#include <protocol.h>
 
 template<typename T>
 std::vector<T> operator+(const std::vector<T>& lhs, const std::vector<T>& rhs) {
@@ -49,5 +50,7 @@ typename T::value_type pop_front(T& container) {
     container.pop_front();
     return std::move(t);
 }
+
+uint locate_tlv_type(const std::vector<tlv_unit>& unit, uint16_t type);
 
 #endif //UTILS_H

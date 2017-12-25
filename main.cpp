@@ -298,8 +298,7 @@ void impp_login(PurpleAccount *acc) {
     // conn->flags |= PURPLE_CONNECTION_HTML;
 }
 
-static PurplePluginProtocolInfo prpl_info =
-{
+static PurplePluginProtocolInfo prpl_info = {
     OPT_PROTO_IM_IMAGE, // | OPT_PROTO_CHAT_TOPIC | OPT_PROTO_UNIQUE_CHATNAME,
     0,               /* user_splits, initialized in impp_init() */
     0,               /* protocol_options, initialized in impp_init() */

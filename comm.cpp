@@ -19,6 +19,9 @@
 #include <debug.h>
 #include <unistd.h>
 #include <numeric>
+#include <blist.h>
+#include <ctime>
+#include <server.h>
 #include "comm.h"
 #include "utils.h"
 #include "common-consts.h"
@@ -133,16 +136,16 @@ static string handle_error(const tlv_packet_data& pckt, IMPPConnectionData& impp
 }
 
 // enqueues and sends packets
-size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp) {
-    if (impp.ack_waiting.empty()) {
-        if (in || !impp.send_queue.empty()) {
-            // todo: guard the data with mutices if multiple threads involved
-            tlv_packet_data pckt = (in)? *in : pop_front(impp.send_queue);
+size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
+    // todo: guard the data with mutices if multiple threads involved
+    if (in)
+        impp.send_queue.push_back(*in);
+    if (impp.ack_waiting.empty() && !impp.send_queue.empty()) {
+            tlv_packet_data pckt = pop_front(impp.send_queue);
             pckt.sequence = impp.next_seq++;
             const std::vector<uint8_t> dat_pckt = serialize(pckt);
             impp.ack_waiting[pckt.sequence.get()] = {};
             return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
-        }
     } else {
         purple_debug_info("queue_next: packets №"
                           + accumulate(impp.ack_waiting.begin(),
@@ -154,6 +157,36 @@ size_t impp_send_tls(tlv_packet_data* in, IMPPConnectionData& impp) {
             impp.send_queue.push_back(*in);
     }
     return 0;
+}
+
+static
+void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp) {
+    for(const tlv_unit& u : batch) {
+        const vector<tlv_unit> msg_unit = deserialize_units(u.get_val().data(), u.get_val().size());
+        uint from_i = locate_tlv_type(msg_unit, IM::FROM),
+            msg_i = locate_tlv_type(msg_unit, IM::MESSAGE_CHUNK);
+        if (from_i == msg_unit.size() || msg_i == msg_unit.size()) {
+            assert(false);
+            purple_debug_info("err: incorrect msg, ignoring\n");
+            continue;
+        }
+        // check if FROM-BUD exist, create a new one otherwise
+        // todo: buds handling here needs to be reconsidered after contact list and
+        // contact requests are implemented
+        #define val_at(i) (msg_unit[i].get_val())
+        string from = {val_at(from_i).data(), val_at(from_i).data() + val_at(from_i).size()},
+            msg = {val_at(msg_i).data(), val_at(msg_i).data() + val_at(msg_i).size()};
+        #undef val_at
+        PurpleBuddy* bud = purple_find_buddy(impp.conn->account, from.c_str());
+        if (!bud)
+            bud = purple_buddy_new(impp.conn->account, from.c_str(), 0);
+
+        // show the message
+        // todo: I dunno what's the time format they're using, not POSIX for sure.
+        time_t t = 0;
+        serv_got_im(impp.conn, from.c_str(), msg.c_str(), PURPLE_MESSAGE_RECV, t);
+        purple_debug_info("dbg: offline message handled!");
+    }
 }
 
 // lack of the counterpart to impp_send_tls is because extracting the function
@@ -210,6 +243,10 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
                 purple_debug_info("impp", "wrn: response to a packet we never sent\n");
             else
                 impp_send_tls(0, impp);
+            if (pckt.family.get() == tlv_packet_data::im
+                && pckt.msg_type.get() == IM::OFFLINE_MESSAGES_GET)
+                handle_offline_msgs(pckt.get_block(), impp);
+            // todo: handle OFFLINE_MESSAGE at flags=lists (just a notification)
             return;
         case tlv_packet_data::indication:
             purple_debug_info("impp", "todo: indication\n");
@@ -228,6 +265,11 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
             return;
     }
 }
+
+// todo: for very basic message-receiving contact list doesn't really matter, it's
+// unimportant whether FROM_BUD is in the list or not, because IMO throwing message
+// away would be silly anyway.
+// void add_buddy(){}
 
 // send user msg
 size_t impp_send_msg(IMPPConnectionData& impp, const string& msg, const string& to) {
