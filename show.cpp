@@ -171,9 +171,9 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
     return sz + std::to_string(type);
 }
 
-cstr show_tlv_unit(const std::vector<tlv_unit>& units,
-                   uint indent_offset,
-                   const tlv_packet_data& pckt ) {
+cstr show_tlv_units(const std::vector<tlv_unit>& units,
+                    uint indent_offset,
+                    const tlv_packet_data& pckt ) {
     if (units.size() == 0)
         return "";
     cstr indent_base = cstr(indent_offset, ' ');
@@ -197,9 +197,9 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units,
     return ret;
 }
 
-cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data& pckt) {
+cstr show_tlv_units(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data& pckt) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
-    return show_tlv_unit(units, indent_offset, pckt);
+    return show_tlv_units(units, indent_offset, pckt);
 }
 
 cstr show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error) {
@@ -342,7 +342,7 @@ cstr show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset){
         + newl_indent + "msg_type = " + show_msg_type(packet.family, packet.msg_type.get())
         + newl_indent + "sequence = " + std::to_string(packet.sequence.get())
         + newl_indent + "block_sz = " + std::to_string(packet.block_sz.get())
-        + newl_indent + "block[]  = " + show_tlv_unit(packet.get_block(), indent_offset+4, packet)
+        + newl_indent + "block[]  = " + show_tlv_units(packet.get_block(), indent_offset+4, packet)
         + indent_base + "\n}";
 }
 

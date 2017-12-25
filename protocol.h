@@ -88,10 +88,10 @@ enum MSG_TYPE: uint16_t {
 enum TLV_TYPE: uint16_t {
     ERRORCODE = 0,
     FEATURES  = 1,
-    MECHANISM = 2, // I know only of val = MECHANISM_PASSWORD = 1
-    NAME      = 3,
-    TIMESTAMP = 4,
-    PASSWORD  = 5
+    MECHANISM = 2, // 16 bit, I know only of val = MECHANISM_PASSWORD = 1
+    NAME      = 3, // 16 bit
+    TIMESTAMP = 4, // 16 bit
+    PASSWORD  = 5  // 16 bit
 };
 
 /* a tlv_unit::val, can be used with bitmask */
@@ -162,8 +162,8 @@ enum MSG_TYPE: uint16_t {
 
 enum TLV_TYPE: uint16_t {
     ERRORCODE       = 0,
-    FROM            = 1,
-    TO              = 2,
+    FROM            = 1, // 16 bits
+    TO              = 2, // 16 bits
     CONTACT_ADDRESS = 3,
     PENDING_ADDRESS = 4,
     ALLOW_ADDRESS   = 5,
@@ -219,15 +219,15 @@ enum MSG_TYPE: uint16_t {
 
 enum TLV_TYPE: uint16_t {
     ERRORCODE       = 0,
-    FROM            = 1,
-    TO              = 2,
-    CAPABILITY      = 3,
+    FROM            = 1, // 16 bits
+    TO              = 2, // 16 bits
+    CAPABILITY      = 3, // 16 bits
     MESSAGE_ID      = 4,
     MESSAGE_SIZE    = 5,
-    MESSAGE_CHUNK   = 6,
-    CREATED_AT      = 7,
-    TIMESTAMP       = 8,
-    OFFLINE_MESSAGE = 9,
+    MESSAGE_CHUNK   = 6, // 16 bits
+    CREATED_AT      = 7, // 16 bits
+    TIMESTAMP       = 8, // 16 bits
+    OFFLINE_MESSAGE = 9, // 16 bits
 
     // undocumented, used at least in tlv_unit::type of OFFLINE_MESSAGES_GET, whereas
     // the value field are tlv_units of the form `templ_user_msg_body`.
@@ -507,8 +507,8 @@ void print_tlv_packet_version(const tlv_packet_version& v);
 void print_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset);
-const std::string show_tlv_unit(const uint8_t d[], long int d_sz,
-                                uint indent_offset, const tlv_packet_data& pckt);
+const std::string show_tlv_units(const uint8_t d[], long int d_sz,
+                                 uint indent_offset, const tlv_packet_data& pckt);
 const std::string show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error);
 const std::string to_hex(uint8_t* arr, uint sz_arr);
 
