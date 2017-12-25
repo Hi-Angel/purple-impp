@@ -123,6 +123,42 @@ const tlv_packet_data templ_basic_request = tlv_packet_data {
     block  : {}
 };
 
+// The body separately is used e.g. for sending a batch of messages
+const std::vector<tlv_unit> templ_user_msg_body = {
+    tlv_unit {
+        type : IM::FROM,
+        val  : {}
+    },
+    tlv_unit {
+        type : IM::TO,
+        val  : {}
+    },
+    tlv_unit {
+        type : IM::MESSAGE_ID,
+        val  : { 0x00, 0x00, 0x00, 0x00 }
+    },
+    tlv_unit {
+        type : IM::TIMESTAMP,
+        val  : {0x00, 0x00, 0x01, 0x60, 0x86, 0x72, 0x8E, 0xC0}
+    },
+    tlv_unit {
+        type : IM::MESSAGE_SIZE,
+        val  : { 0x00, 0x00, 0x00, 0x00 }
+    },
+    tlv_unit {
+        type : IM::MESSAGE_CHUNK,
+        val  : {}
+    },
+    tlv_unit {
+        type : IM::CAPABILITY,
+        val  : { 0x00, 0x01 } // IM::CAPABILITY_IM
+    },
+    tlv_unit {
+        type : IM::CREATED_AT,
+        val  : { 0x00, 0x00, 0x01, 0x3C, 0x1A, 0xDF, 0x2B, 0x23 }
+    }
+};
+
 const tlv_packet_data templ_user_msg = tlv_packet_data {
     head : tlv_packet_header {
         magic   : magic,
@@ -132,35 +168,7 @@ const tlv_packet_data templ_user_msg = tlv_packet_data {
     family   : tlv_packet_data::im,
     msg_type : IM::MESSAGE_SEND,
     sequence : 1,
-    block    : {
-        tlv_unit {
-            type : IM::FROM,
-            val  : {}
-        },
-        tlv_unit {
-            type : IM::TO,
-            val  : {}
-        },
-        tlv_unit {
-            type : IM::MESSAGE_ID,
-            val  : { 0x00, 0x00, 0x00, 0x00 }
-        },
-        tlv_unit {
-            type : IM::MESSAGE_SIZE,
-            val  : { 0x00, 0x00, 0x00, 0x00 }
-        },
-        tlv_unit {
-            type : IM::MESSAGE_CHUNK,
-            val  : {}
-        },
-        tlv_unit {
-            type : IM::CAPABILITY,
-            val  : { 0x00, 0x01 } // IM::CAPABILITY_IM
-        },
-        tlv_unit {
-            type : IM::CREATED_AT,
-            val  : { 0x00, 0x00, 0x01, 0x3C, 0x1A, 0xDF, 0x2B, 0x23 }
-        }}
+    block    : templ_user_msg_body
 };
 
 #endif //COMMON_CONSTS_H

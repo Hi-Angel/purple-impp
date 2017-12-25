@@ -194,7 +194,7 @@ cstr show_tlv_unit(const std::vector<tlv_unit>& units,
     return ret;
 }
 
-cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data pckt) {
+cstr show_tlv_unit(const uint8_t* d, long int d_sz, uint indent_offset, const tlv_packet_data& pckt) {
     const std::vector<tlv_unit> units = deserialize_units(d, d_sz);
     return show_tlv_unit(units, indent_offset, pckt);
 }

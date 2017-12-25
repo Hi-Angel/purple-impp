@@ -227,7 +227,11 @@ enum TLV_TYPE: uint16_t {
     MESSAGE_CHUNK   = 6,
     CREATED_AT      = 7,
     TIMESTAMP       = 8,
-    OFFLINE_MESSAGE = 9
+    OFFLINE_MESSAGE = 9,
+
+    // undocumented, used at least in tlv_unit::type of OFFLINE_MESSAGES_GET, whereas
+    // the value field are tlv_units of the form `templ_user_msg_body`.
+    MSG_BATCH       = 10
 };
 enum ERROR: uint16_t {
     USERNAME_BLOCKED     = 0x8001,
@@ -503,7 +507,8 @@ void print_tlv_packet_version(const tlv_packet_version& v);
 void print_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet(const uint8_t p[], uint tlv_sz);
 const std::string show_tlv_packet_data(const tlv_packet_data& packet, uint indent_offset);
-const std::string show_tlv_unit(const uint8_t d[], long int d_sz, uint indent_offset);
+const std::string show_tlv_unit(const uint8_t d[], long int d_sz,
+                                uint indent_offset, const tlv_packet_data& pckt);
 const std::string show_tlv_error(tlv_packet_data::tlv_family family, uint16_t error);
 const std::string to_hex(uint8_t* arr, uint sz_arr);
 
