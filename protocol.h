@@ -26,7 +26,6 @@
 #include <vector>
 #include <variant>
 #include <cassert>
-#include "utils.h"
 
 //source: https://stackoverflow.com/a/4956493/2388257
 template <typename T>
@@ -362,6 +361,10 @@ struct tlv_packet_version {
         archive(head, protocol_version);
     }
 };
+
+#include "utils.h"
+std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
+void zerror(int zlib_ret);
 
 struct tlv_packet_data {
     /* just type declarations, they do not contribute a size unless being used */

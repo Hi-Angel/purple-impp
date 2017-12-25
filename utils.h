@@ -37,10 +37,6 @@ std::vector<T> operator+=(std::vector<T>& lhs, const std::vector<T>& rhs) {
 }
 
 const char* strerror_newl(int err);
-
-// inflates data compressed with Deflate algorithm. Returns: (error,
-// uncompressed). For human-readable description of error use zerror()
-std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
 void impp_debug_info(std::string s);
 
@@ -52,5 +48,9 @@ typename T::value_type pop_front(T& container) {
 }
 
 uint locate_tlv_type(const std::vector<tlv_unit>& unit, uint16_t type);
+
+// inflates data compressed with Deflate algorithm. Returns: (error,
+// uncompressed). For human-readable description of error use zerror()
+std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 
 #endif //UTILS_H
