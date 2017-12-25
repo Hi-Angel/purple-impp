@@ -42,7 +42,7 @@ const char* strerror_newl(int err);
 // uncompressed). For human-readable description of error use zerror()
 std::pair<int,std::vector<uint8_t>> inflate(const std::vector<uint8_t> in);
 void zerror(int zlib_ret);
-void purple_debug_info(std::string s);
+void impp_debug_info(std::string s);
 
 template<typename T>
 typename T::value_type pop_front(T& container) {

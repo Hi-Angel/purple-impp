@@ -122,8 +122,8 @@ void zerror(int zlib_ret) {
     }
 }
 
-void purple_debug_info(std::string s) {
-    purple_debug_info("impp", s.c_str());
+void impp_debug_info(std::string s) {
+    purple_debug_info("impp", (s + "\n").c_str());
 }
 
 // returns either the index with the type if it exists, or the size of array

@@ -119,13 +119,13 @@ static string handle_error(const tlv_packet_data& pckt, IMPPConnectionData& impp
             case IM::USERNAME_NOT_CONTACT: // fall through
             case IM::INVALID_CAPABILITY:   // fall through
                 if (!impp.ack_waiting.erase(pckt.sequence.get()))
-                    purple_debug_info({"wrn: response to a packet we never sent\n"});
+                    impp_debug_info("wrn: response to a packet we never sent");
                 return err_desc;
             default:
                 assert(0);
-                purple_debug_info({"wrn: unknown im error\n"});
+                impp_debug_info("wrn: unknown im error");
                 if (!impp.ack_waiting.erase(pckt.sequence.get()))
-                    purple_debug_info({"wrn: response to a packet we never sent\n"});
+                    impp_debug_info("wrn: response to a packet we never sent");
                 return err_desc;
         }
         case tlv_packet_data::presence:    // todo:
@@ -143,19 +143,19 @@ size_t impp_send_tls(const tlv_packet_data* in, IMPPConnectionData& impp) {
     if (in)
         impp.send_queue.push_back(*in);
     if (impp.ack_waiting.empty() && !impp.send_queue.empty()) {
-        purple_debug_info("dbg: sending next packet\n");
+        impp_debug_info("dbg: sending next packet");
         tlv_packet_data pckt = pop_front(impp.send_queue);
         pckt.sequence = impp.next_seq++;
         const std::vector<uint8_t> dat_pckt = serialize(pckt);
         impp.ack_waiting[pckt.sequence.get()] = {};
         return purple_ssl_write(impp.ssl, dat_pckt.data(), dat_pckt.size());
     } else {
-        purple_debug_info("queue_next: packets №"
-                          + accumulate(impp.ack_waiting.begin(),
-                                       impp.ack_waiting.end(),
-                                       string{""},
-                                       [](string acc, auto i) { return acc + to_string(i.first); })
-                          + " still unanswered\n");
+        impp_debug_info("queue_next: packets №"
+                             + accumulate(impp.ack_waiting.begin(),
+                                          impp.ack_waiting.end(),
+                                          string{""},
+                                          [](string acc, auto i) { return acc + to_string(i.first); })
+                             + " still unanswered\n");
     }
     return 0;
 }
@@ -168,7 +168,7 @@ void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp
             msg_i = locate_tlv_type(msg_unit, IM::MESSAGE_CHUNK);
         if (from_i == msg_unit.size() || msg_i == msg_unit.size()) {
             assert(false);
-            purple_debug_info("err: incorrect msg, ignoring\n");
+            impp_debug_info("err: incorrect msg, ignoring");
             continue;
         }
         // check if FROM-BUD exist, create a new one otherwise
@@ -187,14 +187,14 @@ void handle_offline_msgs(const vector<tlv_unit>& batch, IMPPConnectionData& impp
         // todo: I dunno what's the time format they're using, not POSIX for sure.
         time_t t = 0;
         serv_got_im(impp.conn, from.c_str(), msg.c_str(), PURPLE_MESSAGE_RECV, t);
-        purple_debug_info("dbg: offline message handled!\n");
+        impp_debug_info("dbg: offline message handled!");
     }
 }
 
 // lack of the counterpart to impp_send_tls is because extracting the function
 // results in too much boilerplate
 void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition) {
-    purple_debug_info("impp", "handle_incoming called\n");
+    purple_debug_info("impp", "handle_incoming called");
     IMPPConnectionData& impp = *((IMPPConnectionData*)in);
     std::vector<uint8_t>& buf = impp.recvd;
     do {
@@ -234,7 +234,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
     } // else tlv_packet_data
     const tlv_packet_data& pckt = get<tlv_packet_data>(maybepckt);
     buf.erase(buf.begin(), buf.begin() + pckt.curr_pckt_sz());
-    purple_debug_info(show_tlv_packet_data(pckt, 0) + "\n");
+    impp_debug_info(show_tlv_packet_data(pckt, 0) + "\n");
 
     switch (pckt.flags.get()) {
         case tlv_packet_data::request:
@@ -256,14 +256,14 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
         case tlv_packet_data::error: {
             string err = handle_error(pckt, impp);
             if (!err.empty()) // todo: probably, show error in the focused chat
-                purple_debug_info("error " + err);
+                impp_debug_info("error " + err);
             return;
         }
         case tlv_packet_data::extension:
             purple_debug_info("impp", "wrn: extension request from a server, what could that be?\n");
             return;
         default:
-            purple_debug_info({"wrn: unknown incoming flag\n"});
+            impp_debug_info("wrn: unknown incoming flag");
             return;
     }
 }
@@ -272,7 +272,7 @@ void handle_incoming(gpointer in, PurpleSslConnection *ssl, PurpleInputCondition
 int impp_send_im(PurpleConnection *conn, const char *to, const char *msg,
                  PurpleMessageFlags flags) {
     IMPPConnectionData& impp = *(IMPPConnectionData*)purple_connection_get_protocol_data(conn);
-    purple_debug_info("dbg: impp_send_im called");
+    impp_debug_info("dbg: impp_send_im called");
     #define tlv_type_at(i) templ_user_msg.get_block()[i].type.get()
     assert(tlv_type_at(0)    == IM::FROM && tlv_type_at(1) == IM::TO
            && tlv_type_at(2) == IM::MESSAGE_ID && tlv_type_at(3) == IM::TIMESTAMP
