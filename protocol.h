@@ -28,6 +28,7 @@
 #include <cassert>
 
 //source: https://stackoverflow.com/a/4956493/2388257
+// todo: use htons()'n'co in case somebody uses a big-endian CPU
 template <typename T>
 T swap_endian(T u) {
     union {
