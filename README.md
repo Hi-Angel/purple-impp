@@ -2,7 +2,7 @@
 
 Right now it's a proof-of-concept. It was meant to be a prototype for my kickstarter project, but turned out kickstarter's list of countries is very short, and as it happens, mine is not included. I was about to try Indiegogo, however along the way to my native currency it takes so many fees that unless I demand something big for this project, it defeats the purpose. Granted though, I don't know if it would be the same for Kickstarter. As I don't use Trillian personally, the project is frozen until I find sponsors *(I do accept contributions though)*.
 
-It's able to use TLS, authenticate, send/receive plain-text messages, send/receive protocol-level pings, receive typing notification, receive offline messages *(being a separate feature in the protocol; however notification of the server about them received is not yet implemented, i.e. the server gonna spam them on every connection)*.
+It's able to use TLS, authenticate, send/receive plain-text messages, send/receive protocol-level pings, receive typing notification, receive offline messages *(being a separate feature in the protocol; however notification of the server about them received is not yet implemented, i.e. the server gonna spam them on every connection)*. There's also a partial support for compression, but at the moment it only wired up at [deflate-preload](https://github.com/Hi-Angel/purple-impp/tree/deflate_preload) branch, being a temporary branch until the support gets implemented everywhere.
 
 Code-wise it's also able for human-readable representation of packets *(in terse haskell-like syntax)*, which proved to be an amazing debugging and reverse-engineering facility.
 
