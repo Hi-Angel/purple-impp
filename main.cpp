@@ -389,9 +389,8 @@ static PurplePluginProtocolInfo prpl_info = {
 };
 
 // struct PurplePluginInfo requires these declarations not to be const
-#define DEBUGSUFFIX "9impp"
-char PRPL_ID[]         = "prpl-" DEBUGSUFFIX;
-char PLUGIN_NAME[]     = DEBUGSUFFIX;
+char PRPL_ID[]         = "prpl-impp";
+char PLUGIN_NAME[]     = "Trillian-IMPP";
 char DISPLAY_VERSION[] = "1.0";
 char SUMMARY[]         = "Trillian IMPP Protocol Plugin";
 char DESCRIPTION[]     = "Trillian IMPP Protocol Plugin";
