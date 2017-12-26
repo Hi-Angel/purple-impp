@@ -168,7 +168,6 @@ static
 void show_msg_from(IMPPConnectionData& impp, string from, string msg,
                   PurpleMessageFlags flags, time_t t) {
     if (flags != PURPLE_MESSAGE_ERROR) {
-        // check if FROM-BUD exist, create a new one otherwise
         // todo: buds handling here needs to be reconsidered after contact list and
         // contact requests are implemented
         PurpleBuddy* bud = purple_find_buddy(impp.conn->account, from.c_str());
