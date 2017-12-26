@@ -44,16 +44,16 @@ const tlv_packet_data templ_authorize = tlv_packet_data {
     sequence : 6,
     block  : {
         tlv_unit {
-            type   : STREAM::MECHANISM,
-            val : { 0x00, 0x01 }
+            type : STREAM::MECHANISM,
+            val  : { 0x00, 0x01 }
         },
         tlv_unit {
-            type   : STREAM::NAME,
-            val : { 0x74, 0x72, 0x69, 0x63, 0x69, 0x61 }
+            type : STREAM::NAME,
+            val  : { 0x74, 0x72, 0x69, 0x63, 0x69, 0x61 }
         },
         tlv_unit {
-            type   : STREAM::PASSWORD,
-            val : { 0x70, 0x61, 0x73, 0x73, 0x77, 0x6F, 0x72, 0x64 }
+            type : STREAM::PASSWORD,
+            val  : { 0x70, 0x61, 0x73, 0x73, 0x77, 0x6F, 0x72, 0x64 }
         }}
 };
 
@@ -68,45 +68,45 @@ const tlv_packet_data templ_client_info = tlv_packet_data {
     sequence : 7,
     block  : {
         tlv_unit {
-            type   : DEVICE::CLIENT_NAME,
-            val : { CLIENT_NAME, CLIENT_NAME + sizeof(CLIENT_NAME) - 1 }
+            type : DEVICE::CLIENT_NAME,
+            val  : { CLIENT_NAME, CLIENT_NAME + sizeof(CLIENT_NAME) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::CLIENT_PLATFORM,
-            val : { CLIENT_PLATFORM, CLIENT_PLATFORM + sizeof(CLIENT_PLATFORM) - 1 }
+            type : DEVICE::CLIENT_PLATFORM,
+            val  : { CLIENT_PLATFORM, CLIENT_PLATFORM + sizeof(CLIENT_PLATFORM) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::CLIENT_ARCH,
-            val : { CLIENT_ARCH, CLIENT_ARCH + sizeof(CLIENT_ARCH) - 1 }
+            type : DEVICE::CLIENT_ARCH,
+            val  : { CLIENT_ARCH, CLIENT_ARCH + sizeof(CLIENT_ARCH) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::CLIENT_VERSION,
-            val : { CLIENT_VERSION, CLIENT_VERSION + sizeof(CLIENT_VERSION) - 1 }
+            type : DEVICE::CLIENT_VERSION,
+            val  : { CLIENT_VERSION, CLIENT_VERSION + sizeof(CLIENT_VERSION) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::CLIENT_BUILD,
-            val : { CLIENT_BUILD, CLIENT_BUILD + sizeof(CLIENT_BUILD) - 1 }
+            type : DEVICE::CLIENT_BUILD,
+            val  : { CLIENT_BUILD, CLIENT_BUILD + sizeof(CLIENT_BUILD) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::DEVICE_NAME,
-            val : { DEVICE_NAME, DEVICE_NAME + sizeof(DEVICE_NAME) - 1 }
+            type : DEVICE::DEVICE_NAME,
+            val  : { DEVICE_NAME, DEVICE_NAME + sizeof(DEVICE_NAME) - 1 }
         },
         tlv_unit {
-            type   : DEVICE::STATUS,
-            val : { 0x00, 0x01 } // todo: probably USER_STATUS_ONLINE from docs
+            type : DEVICE::STATUS,
+            val  : { 0x00, 0x01 } // todo: probably USER_STATUS_ONLINE from docs
         },
         tlv_unit {
-            type   : DEVICE::IS_STATUS_AUTOMATIC,
-            val : { 0x00 }
+            type : DEVICE::IS_STATUS_AUTOMATIC,
+            val  : { 0x00 }
         },
         tlv_unit {
-            type   : DEVICE::CAPABILITIES,
-            val : { 0x00, 0x01, 0x42, 0x04, 0x00, 0x02, 0x42, 0x09, 0x42, 0x03, 0x42, 0x06, 0x42, 0x05, 0x42, 0x07, 0x42, 0x08 }
+            type : DEVICE::CAPABILITIES,
+            val  : { 0x00, 0x01, 0x42, 0x04, 0x00, 0x02, 0x42, 0x09, 0x42, 0x03, 0x42, 0x06, 0x42, 0x05, 0x42, 0x07, 0x42, 0x08 }
             // todo: I've no idea what capabilities this is, and docs not very helpful
         },
         tlv_unit {
-            type   : DEVICE::CLIENT_DESCRIPTION,
-            val : { CLIENT_DESCRIPTION, CLIENT_DESCRIPTION + sizeof(CLIENT_DESCRIPTION) - 1 }
+            type : DEVICE::CLIENT_DESCRIPTION,
+            val  : { CLIENT_DESCRIPTION, CLIENT_DESCRIPTION + sizeof(CLIENT_DESCRIPTION) - 1 }
         }}
 };
 
