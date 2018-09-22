@@ -58,26 +58,22 @@ Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
     return {t};
 }
 
-variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat) {
+using MaybePacket = variant<tlv_packet_data,tlv_packet_version,std::string>;
+
+MaybePacket deserialize_pckt(const uint8_t dat[], uint sz_dat) {
     Maybe<tlv_packet_header> mb_head = deserialize<tlv_packet_header>(dat, sz_dat);
     if (holds_alternative<monostate>(mb_head))
         return {"couldn't deserialize packet header"};
     switch (get_ref(mb_head).channel) {
         case tlv_packet_header::version: {
             variant version = deserialize<tlv_packet_version>(dat, sz_dat);
-            // ternary doesn't support constructors
-            if (holds_alternative<monostate>(version))
-                return {"failed deserializing packet_version"};
-            else
-                return get_ref(version);
+            return (!holds_alternative<monostate>(version))? get_ref(version)
+                : MaybePacket{"failed deserializing packet_version"};
         }
         case tlv_packet_header::tlv: {
             variant dat_packet = deserialize<tlv_packet_data>(dat, sz_dat);
-            // ternary doesn't support constructors
-            if (holds_alternative<monostate>(dat_packet))
-                return {"failed deserializing packet_data"};
-            else
-                return get_ref(dat_packet);
+            return (!holds_alternative<monostate>(dat_packet))? get_ref(dat_packet)
+                : MaybePacket{"failed deserializing packet_data"};
         }
         default:
             return {"unknown packet channel, ignoring!"};
