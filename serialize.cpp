@@ -106,9 +106,9 @@ vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
 }
 
 // templates can't be exported, so we have to resort to dirty hacks
-#define SERIALIZE(type) std::vector<uint8_t> serialize(const type& t) { return serialize<type>(t); }
-SERIALIZE(tlv_unit)
-SERIALIZE(tlv_packet_data)
-SERIALIZE(tlv_packet_version)
-SERIALIZE(uint32bg_t)
-SERIALIZE(uint16bg_t)
+#define DECL_SERIALIZE(type) std::vector<uint8_t> serialize(const type& t) { return serialize<type>(t); }
+DECL_SERIALIZE(tlv_unit)
+DECL_SERIALIZE(tlv_packet_data)
+DECL_SERIALIZE(tlv_packet_version)
+DECL_SERIALIZE(uint32bg_t)
+DECL_SERIALIZE(uint16bg_t)
