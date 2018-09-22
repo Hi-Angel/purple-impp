@@ -66,13 +66,13 @@ MaybePacket deserialize_pckt(const uint8_t dat[], uint sz_dat) {
         return {"couldn't deserialize packet header"};
     switch (get_ref(mb_head).channel) {
         case tlv_packet_header::version: {
-            variant version = deserialize<tlv_packet_version>(dat, sz_dat);
-            return (!holds_alternative<monostate>(version))? get_ref(version)
+            auto mb_version = deserialize<tlv_packet_version>(dat, sz_dat);
+            return (!holds_alternative<monostate>(mb_version))? get_ref(mb_version)
                 : MaybePacket{"failed deserializing packet_version"};
         }
         case tlv_packet_header::tlv: {
-            variant dat_packet = deserialize<tlv_packet_data>(dat, sz_dat);
-            return (!holds_alternative<monostate>(dat_packet))? get_ref(dat_packet)
+            auto mb_dat_pckt = deserialize<tlv_packet_data>(dat, sz_dat);
+            return (!holds_alternative<monostate>(mb_dat_pckt))? get_ref(mb_dat_pckt)
                 : MaybePacket{"failed deserializing packet_data"};
         }
         default:
