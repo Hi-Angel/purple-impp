@@ -21,10 +21,9 @@
 #include <variant>
 #include <vector>
 #include "protocol.h"
+#include "utils.h"
 
 using namespace std;
-
-using nothing = std::monostate;
 
 // Cereal uses an odd naming convention, so here's a mnemonic: apparently
 // "OutputArchive" implies writing *to* stream, "InputArchive" is *from*.  A "stream"
@@ -46,7 +45,7 @@ const vector<uint8_t> serialize(const T& t) {
 }
 
 template<typename T>
-variant<T, nothing> deserialize(const uint8_t dat[], uint sz_dat) {
+Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
     stringstream ss(ios::binary | ios::out | ios::in);
     cereal::BinaryOutputArchive arr_to_ss = {ss};
     arr_to_ss(cereal::binary_data(dat, sz_dat));
@@ -54,31 +53,31 @@ variant<T, nothing> deserialize(const uint8_t dat[], uint sz_dat) {
     cereal::BinaryInputArchive ss_to_MyClass(ss);
     T t;
     try {ss_to_MyClass(t);} catch(const cereal::Exception&) {
-        return nothing{};
+        return monostate{};
     }
     return {t};
 }
 
 variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const uint8_t dat[], uint sz_dat) {
-    variant head = deserialize<tlv_packet_header>(dat, sz_dat);
-    if (holds_alternative<nothing>(head))
+    Maybe<tlv_packet_header> mb_head = deserialize<tlv_packet_header>(dat, sz_dat);
+    if (holds_alternative<monostate>(mb_head))
         return {"couldn't deserialize packet header"};
-    switch (get<tlv_packet_header>(head).channel) {
+    switch (get_ref(mb_head).channel) {
         case tlv_packet_header::version: {
             variant version = deserialize<tlv_packet_version>(dat, sz_dat);
             // ternary doesn't support constructors
-            if (holds_alternative<nothing>(version))
+            if (holds_alternative<monostate>(version))
                 return {"failed deserializing packet_version"};
             else
-                return get<tlv_packet_version>(version);
+                return get_ref(version);
         }
         case tlv_packet_header::tlv: {
             variant dat_packet = deserialize<tlv_packet_data>(dat, sz_dat);
             // ternary doesn't support constructors
-            if (holds_alternative<nothing>(dat_packet))
+            if (holds_alternative<monostate>(dat_packet))
                 return {"failed deserializing packet_data"};
             else
-                return get<tlv_packet_data>(dat_packet);
+                return get_ref(dat_packet);
         }
         default:
             return {"unknown packet channel, ignoring!"};
@@ -94,12 +93,12 @@ vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
     std::vector<tlv_unit> ret;
     long int sz_left = sz_dat;
     do {
-        variant u = deserialize<tlv_unit>(dat, sz_left);
-        if (holds_alternative<nothing>(u))
+        Maybe<tlv_unit> mb_unit = deserialize<tlv_unit>(dat, sz_left);
+        if (holds_alternative<monostate>(mb_unit))
             return ret;
-        ret.push_back(get<tlv_unit>(u));
-        sz_left -= get<tlv_unit>(u).size();
-        dat     += get<tlv_unit>(u).size();
+        ret.push_back(get_ref(mb_unit));
+        sz_left -= get_ref(mb_unit).size();
+        dat     += get_ref(mb_unit).size();
         assert(sz_left >= 0); // otherwise it's buffer overflow
     } while(sz_left >= 0);
     return ret;

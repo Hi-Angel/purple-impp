@@ -20,7 +20,17 @@
 #define UTILS_H
 
 #include <vector>
+#include <variant>
 #include <protocol.h>
+
+template<class T>
+using Maybe = std::variant<std::monostate,T>;
+
+template<class T>
+T& get_ref(Maybe<T>& mb_t) {
+    T& ret = std::get<1>(mb_t);
+    return ret;
+}
 
 template<typename T>
 std::vector<T> operator+(const std::vector<T>& lhs, const std::vector<T>& rhs) {
