@@ -53,7 +53,7 @@ variant<T, nothing> deserialize(const uint8_t dat[], uint sz_dat) {
 
     cereal::BinaryInputArchive ss_to_MyClass(ss);
     T t;
-    try {ss_to_MyClass(t);} catch(cereal::Exception) {
+    try {ss_to_MyClass(t);} catch(const cereal::Exception&) {
         return nothing{};
     }
     return {t};
