@@ -10,7 +10,7 @@ Code-wise it's also able for α) human-readable representation of packets *(in t
 
 # Building
 
-Dependencies: libpurple, zlib, [cereal](https://github.com/USCiLab/cereal). Building only tested on GNU/Linux — I did not test compilation on other operating systems, it's one of many *to-be-done* things.
+Dependencies: libpurple, zlib, [cereal](https://github.com/USCiLab/cereal). Building only tested on GNU/Linux — I have not tested compilation on other operating systems, it's one of many *to-be-done* things.
 
 	$ meson build
 	$ ninja -C build
