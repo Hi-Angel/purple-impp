@@ -47,6 +47,6 @@ executable(
   SOURCES + ['debug.cpp'],
   dependencies: GLOBAL_DEPS,
   install: false,
-  cpp_args: DEBUG_CPP_FLAGS + ['-fsanitize=address'],
-  link_args: ['-fsanitize=address']
+  cpp_args: DEBUG_CPP_FLAGS + ['-fsanitize=undefined,address'],
+  link_args: ['-fsanitize=undefined,address']
 )
