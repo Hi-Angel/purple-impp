@@ -55,7 +55,7 @@ Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
     try {ss_to_MyClass(t);} catch(const cereal::Exception&) {
         return monostate{};
     }
-    return {t};
+    return t;
 }
 
 using MaybePacket = variant<tlv_packet_data,tlv_packet_version,std::string>;
