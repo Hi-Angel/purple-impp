@@ -65,15 +65,15 @@ MaybePacket deserialize_pckt(const uint8_t dat[], uint sz_dat) {
     optional<tlv_packet_header> mb_head = deserialize<tlv_packet_header>(dat, sz_dat);
     if (!mb_head)
         return {"couldn't deserialize packet header"};
-    switch (mb_head.value().channel) {
+    switch (mb_head->channel) {
         case tlv_packet_header::version: {
             optional mb_version = deserialize<tlv_packet_version>(dat, sz_dat);
-            return (mb_version)? mb_version.value()
+            return (mb_version)? *mb_version
                 : MaybePacket{"failed deserializing packet_version"};
         }
         case tlv_packet_header::tlv: {
             optional mb_dat_pckt = deserialize<tlv_packet_data>(dat, sz_dat);
-            return (mb_dat_pckt)? mb_dat_pckt.value()
+            return (mb_dat_pckt)? *mb_dat_pckt
                 : MaybePacket{"failed deserializing packet_data"};
         }
         default:
@@ -93,9 +93,9 @@ vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
         optional<tlv_unit> mb_unit = deserialize<tlv_unit>(dat, sz_left);
         if (!mb_unit)
             return ret;
-        ret.push_back(mb_unit.value());
-        sz_left -= mb_unit.value().size();
-        dat     += mb_unit.value().size();
+        ret.push_back(*mb_unit);
+        sz_left -= mb_unit->size();
+        dat     += mb_unit->size();
         assert(sz_left >= 0); // otherwise it's buffer overflow
     } while(sz_left >= 0);
     return ret;
