@@ -2,7 +2,8 @@ project(
   'purple-impp',
   'cpp',
   version: '0.1.0',
-  meson_version: '>=0.53.0'
+  meson_version: '>=0.53.0',
+  default_options: ['cpp_std=c++17'],
 )
 
 SOURCES = [
@@ -20,7 +21,7 @@ ZLIB        = dependency('zlib')
 LIBDL       = cxx.find_library('dl')
 LIBSSL      = cxx.find_library('ssl')
 GLOBAL_DEPS = [PURPLE, ZLIB, LIBDL, LIBSSL]
-CXX_FLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum', '-std=c++17',
+CXX_FLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum',
              get_option('buildtype') == 'debug'? ['-O0', '-g3', '-D_GLIBCXX_DEBUG'] : []]
 
 add_project_arguments(
