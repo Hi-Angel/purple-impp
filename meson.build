@@ -2,6 +2,7 @@ project(
   'purple-impp',
   'cpp',
   version: '0.1.0',
+  meson_version: '>=0.53.0'
 )
 
 SOURCES = [
@@ -19,7 +20,7 @@ add_project_arguments(
   language : 'cpp'
 )
 
-PURPLE = dependency('purple', version: '>=2.0.0')
+PURPLE = dependency('purple', version: '>=2.0.0', include_type: 'system')
 ZLIB = dependency('zlib')
 GLOBAL_DEPS = [PURPLE, ZLIB]
 DEBUG_CPP_FLAGS = ['-O0', '-g3', '-std=c++17', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum']
