@@ -17,11 +17,12 @@
  */
 
 // please, keep Cereal out of project headers as it noticably slows down compilation
-#include <cereal/archives/binary.hpp>
-#include <variant>
-#include <vector>
 #include "protocol.h"
 #include "utils.h"
+#include <cereal/archives/binary.hpp>
+#include <optional>
+#include <variant>
+#include <vector>
 
 using namespace std;
 
@@ -45,7 +46,7 @@ const vector<uint8_t> serialize(const T& t) {
 }
 
 template<typename T>
-Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
+optional<T> deserialize(const uint8_t dat[], uint sz_dat) {
     stringstream ss(ios::binary | ios::out | ios::in);
     cereal::BinaryOutputArchive arr_to_ss = {ss};
     arr_to_ss(cereal::binary_data(dat, sz_dat));
@@ -53,7 +54,7 @@ Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
     cereal::BinaryInputArchive ss_to_MyClass(ss);
     T t;
     try {ss_to_MyClass(t);} catch(const cereal::Exception&) {
-        return monostate{};
+        return nullopt;
     }
     return t;
 }
@@ -61,18 +62,18 @@ Maybe<T> deserialize(const uint8_t dat[], uint sz_dat) {
 using MaybePacket = variant<tlv_packet_data,tlv_packet_version,std::string>;
 
 MaybePacket deserialize_pckt(const uint8_t dat[], uint sz_dat) {
-    Maybe<tlv_packet_header> mb_head = deserialize<tlv_packet_header>(dat, sz_dat);
-    if (holds_alternative<monostate>(mb_head))
+    optional<tlv_packet_header> mb_head = deserialize<tlv_packet_header>(dat, sz_dat);
+    if (!mb_head)
         return {"couldn't deserialize packet header"};
-    switch (get_ref(mb_head).channel) {
+    switch (mb_head.value().channel) {
         case tlv_packet_header::version: {
-            auto mb_version = deserialize<tlv_packet_version>(dat, sz_dat);
-            return (!holds_alternative<monostate>(mb_version))? get_ref(mb_version)
+            optional mb_version = deserialize<tlv_packet_version>(dat, sz_dat);
+            return (mb_version)? mb_version.value()
                 : MaybePacket{"failed deserializing packet_version"};
         }
         case tlv_packet_header::tlv: {
-            auto mb_dat_pckt = deserialize<tlv_packet_data>(dat, sz_dat);
-            return (!holds_alternative<monostate>(mb_dat_pckt))? get_ref(mb_dat_pckt)
+            optional mb_dat_pckt = deserialize<tlv_packet_data>(dat, sz_dat);
+            return (mb_dat_pckt)? mb_dat_pckt.value()
                 : MaybePacket{"failed deserializing packet_data"};
         }
         default:
@@ -89,12 +90,12 @@ vector<tlv_unit> deserialize_units(const uint8_t dat[], uint sz_dat) {
     std::vector<tlv_unit> ret;
     long int sz_left = sz_dat;
     do {
-        Maybe<tlv_unit> mb_unit = deserialize<tlv_unit>(dat, sz_left);
-        if (holds_alternative<monostate>(mb_unit))
+        optional<tlv_unit> mb_unit = deserialize<tlv_unit>(dat, sz_left);
+        if (!mb_unit)
             return ret;
-        ret.push_back(get_ref(mb_unit));
-        sz_left -= get_ref(mb_unit).size();
-        dat     += get_ref(mb_unit).size();
+        ret.push_back(mb_unit.value());
+        sz_left -= mb_unit.value().size();
+        dat     += mb_unit.value().size();
         assert(sz_left >= 0); // otherwise it's buffer overflow
     } while(sz_left >= 0);
     return ret;
