@@ -13,9 +13,13 @@ SOURCES = [
   'comm.cpp'
 ]
 
-PURPLE = dependency('purple', version: '>=2.0.0', include_type: 'system')
-ZLIB = dependency('zlib')
-GLOBAL_DEPS = [PURPLE, ZLIB]
+cxx = meson.get_compiler('cpp')
+
+PURPLE      = dependency('purple', version: '>=2.0.0', include_type: 'system')
+ZLIB        = dependency('zlib')
+LIBDL       = cxx.find_library('dl')
+LIBSSL      = cxx.find_library('ssl')
+GLOBAL_DEPS = [PURPLE, ZLIB, LIBDL, LIBSSL]
 CXX_FLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum', '-std=c++17',
              get_option('buildtype') == 'debug'? ['-O0', '-g3', '-D_GLIBCXX_DEBUG'] : []]
 
@@ -40,7 +44,6 @@ shared_library(
   SOURCES + ['trillian_preload.cpp'],
   dependencies: GLOBAL_DEPS,
   install: false,
-  link_args: [ '-Wl,--no-as-needed', '-lssl', '-ldl' ]
 )
 
 executable(
