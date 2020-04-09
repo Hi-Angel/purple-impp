@@ -16,11 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "comm.h"
+#include "protocol.h"
+#include <cassert>
 #include <string>
 #include <utility>
-#include <cassert>
-#include "protocol.h"
-#include "comm.h"
 
 using cstr = const std::string;
 using nothing = std::monostate;
@@ -124,6 +124,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case LISTS::NICKNAME:        return sz + "NICKNAME";
                 default: break;
             }
+            break;
         case tlv_packet_data::FAMILY::im:
             switch (type) {
                 case IM::ERRORCODE:       return sz + "ERRORCODE";
@@ -138,6 +139,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case IM::OFFLINE_MESSAGE: return sz + "OFFLINE_MESSAGE";
                 default: break;
             }
+            break;
         case tlv_packet_data::FAMILY::presence:
             switch (type) {
                 case PRESENCE::ERRORCODE:           return sz + "ERRORCODE";
@@ -151,6 +153,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case PRESENCE::CAPABILITIES:        return sz + "CAPABILITIES";
                 default: break;
             }
+            break;
         case tlv_packet_data::FAMILY::avatar:
             break; // todo
         case tlv_packet_data::FAMILY::group_chats:
@@ -165,6 +168,7 @@ cstr show_tlv_type(tlv_packet_data::tlv_family family, uint16_t type) {
                 case GROUP_CHATS::GROUP_CHAT_TUPLE: return sz + "GROUP_CHAT_TUPLE";
                 default: break;
             }
+            break;
         default:
             return sz + std::to_string(type);
     }
