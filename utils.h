@@ -19,9 +19,9 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <vector>
-#include <variant>
 #include <protocol.h>
+#include <variant>
+#include <vector>
 
 template<class T>
 using Maybe = std::variant<std::monostate,T>;
@@ -58,7 +58,7 @@ template<typename T>
 typename T::value_type pop_front(T& container) {
     typename T::value_type t = std::move(container.front());
     container.pop_front();
-    return std::move(t);
+    return t;
 }
 
 uint locate_tlv_type(const std::vector<tlv_unit>& unit, uint16_t type);
