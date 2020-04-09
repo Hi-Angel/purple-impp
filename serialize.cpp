@@ -80,7 +80,7 @@ MaybePacket deserialize_pckt(const uint8_t dat[], uint sz_dat) {
             return {"unknown packet channel, ignoring!"};
     }
 }
-variant<tlv_packet_data,tlv_packet_version,std::string> deserialize_pckt(const std::vector<uint8_t>& dat) {
+MaybePacket deserialize_pckt(const std::vector<uint8_t>& dat) {
     return deserialize_pckt(dat.data(), dat.size());
 }
 
