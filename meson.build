@@ -52,7 +52,7 @@ shared_library(
 )
 
 executable(
-  'a',
+  'debug_app',
   SOURCES + ['debug.cpp'],
   dependencies: GLOBAL_DEPS,
   install: false,
