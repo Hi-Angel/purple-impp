@@ -6,6 +6,7 @@ project(
   default_options: [
     'cpp_std=c++17',
     'b_ndebug=if-release',
+    'warning_level=3',
   ],
 )
 
@@ -24,7 +25,7 @@ ZLIB        = dependency('zlib')
 LIBDL       = cxx.find_library('dl')
 LIBSSL      = cxx.find_library('ssl')
 GLOBAL_DEPS = [PURPLE, ZLIB, LIBDL, LIBSSL]
-CXX_FLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum',
+CXX_FLAGS = ['-Wextra', '-Wno-unused-parameter', '-Wsign-conversion', '-Wswitch-default', '-Wswitch-enum',
              get_option('buildtype') == 'debug'? ['-O0', '-g3', '-D_GLIBCXX_DEBUG'] : []]
 
 add_project_arguments(
