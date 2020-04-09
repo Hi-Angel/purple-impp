@@ -3,7 +3,10 @@ project(
   'cpp',
   version: '0.1.0',
   meson_version: '>=0.53.0',
-  default_options: ['cpp_std=c++17'],
+  default_options: [
+    'cpp_std=c++17',
+    'b_ndebug=if-release',
+  ],
 )
 
 SOURCES = [
