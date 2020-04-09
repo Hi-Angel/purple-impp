@@ -21,11 +21,11 @@
 
 /* This file contains common IMPP structures and types */
 
+#include <cassert>
 #include <cstdint>
 #include <string>
-#include <vector>
 #include <variant>
-#include <cassert>
+#include <vector>
 
 //source: https://stackoverflow.com/a/4956493/2388257
 // todo: use htons()'n'co in case somebody uses a big-endian CPU
@@ -57,6 +57,8 @@ struct big_endian {
     void serialize(Archive& archive) {
         archive(val);
     }
+
+    big_endian<T>& operator=(const big_endian<T>&) = default;
 private: // to not occasionally mess with endianess
     T val;
 };
