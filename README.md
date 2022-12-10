@@ -1,3 +1,5 @@
+<h1 align="center">Trillian IMPP plugin for libpurple</h1>
+
 # Status
 
 Right now it's a proof-of-concept. It was meant to be a prototype for my Kickstarter project, but turned out Kickstarter's list of countries is very short, and as it happens, mine is not included. I was about to try Indiegogo, however along the way to my native currency it takes so many fees that unless I demand something big for this project, it defeats the purpose. Granted though, I don't know if it would be the same for Kickstarter. As I don't use Trillian personally, ATM I'm not actively working on the project, until I find sponsors *(I do accept contributions though)*.
